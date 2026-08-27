@@ -81,3 +81,28 @@ export async function updateUserFullName(
 
   return result.rows[0];
 }
+
+export async function findUserByIdWithPassword(
+  id: number,
+): Promise<UserWithPassword | null> {
+  const result = await pool.query(
+    "SELECT id, email, password_hash, full_name, created_at, updated_at FROM users WHERE id = $1",
+    [id],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+}
+
+export async function updateUserPassword(
+  id: number,
+  passwordHash: string,
+): Promise<void> {
+  await pool.query(
+    `UPDATE users SET password_hash = $1, updated_at = current_timestamp WHERE id = $2`,
+    [passwordHash, id],
+  );
+}
