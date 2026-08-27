@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { findUserByEmail, createUser } from "../repositories/user.repository";
 import { createInitialBalances } from "../repositories/balance.repository";
+import { createWallet } from '../repositories/wallet.repository';
 
 export async function registerUser(
   email: string,
@@ -17,7 +18,9 @@ export async function registerUser(
 
   const newUser = await createUser(email, passwordHash, fullName);
 
-  await createInitialBalances(newUser.id)
+  const wallet = await createWallet(newUser.id);
+
+  await createInitialBalances(wallet.id);
 
   return newUser;
 }

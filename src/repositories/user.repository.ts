@@ -35,3 +35,22 @@ export async function createUser(
 
   return result.rows[0];
 }
+
+interface UserWithPassword extends User {
+  password_hash: string;
+}
+
+export async function findUserByEmailWithPassword(
+  email: string
+): Promise<UserWithPassword | null> {
+  const result = await pool.query(
+    'SELECT id, email, password_hash, full_name, created_at, updated_at FROM users WHERE email = $1',
+    [email]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+}
