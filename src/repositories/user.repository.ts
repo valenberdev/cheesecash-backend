@@ -68,3 +68,16 @@ export async function findUserById(id: number): Promise<User | null> {
 
   return result.rows[0];
 }
+
+export async function updateUserFullName(
+  id: number,
+  fullName: string,
+): Promise<User> {
+  const result = await pool.query(
+    `UPDATE users SET full_name = $1, updated_at = current_timestamp WHERE id = $2
+     RETURNING id, email, full_name, auth_provider, created_at, updated_at`,
+    [fullName, id],
+  );
+
+  return result.rows[0];
+}
