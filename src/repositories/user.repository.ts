@@ -4,6 +4,7 @@ interface User {
   id: number;
   email: string;
   full_name: string;
+  auth_provider: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -41,11 +42,24 @@ interface UserWithPassword extends User {
 }
 
 export async function findUserByEmailWithPassword(
-  email: string
+  email: string,
 ): Promise<UserWithPassword | null> {
   const result = await pool.query(
-    'SELECT id, email, password_hash, full_name, created_at, updated_at FROM users WHERE email = $1',
-    [email]
+    "SELECT id, email, password_hash, full_name, created_at, updated_at FROM users WHERE email = $1",
+    [email],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+}
+
+export async function findUserById(id: number): Promise<User | null> {
+  const result = await pool.query(
+    "SELECT id, email, full_name, auth_provider, created_at, updated_at FROM users WHERE id = $1",
+    [id],
   );
 
   if (result.rows.length === 0) {
