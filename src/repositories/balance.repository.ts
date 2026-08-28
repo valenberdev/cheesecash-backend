@@ -1,4 +1,5 @@
-import { pool } from "../config/db";
+import { pool } from '../config/db';
+import { PoolClient } from 'pg';
 
 const SUPPORTED_CURRENCIES = ["ARS", "USD", "EUR", "BTC"];
 
@@ -31,4 +32,16 @@ export async function findBalancesByWalletId(
   );
 
   return result.rows;
+}
+
+export async function adjustBalance(
+  client: PoolClient,
+  walletId: number,
+  currency: string,
+  delta: number
+): Promise<void> {
+  await client.query(
+    `UPDATE balances SET amount = amount + $1, updated_at = current_timestamp WHERE wallet_id = $2 AND currency = $3`,
+    [delta, walletId, currency]
+  );
 }
