@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { registerUser, loginUser } from "../services/auth.service";
+import { registerUser, loginUser, loginWithGoogle } from "../services/auth.service";
 
 export async function register(req: Request, res: Response) {
   try {
@@ -18,6 +18,18 @@ export async function login(req: Request, res: Response) {
     const { email, password } = req.body;
 
     const result = await loginUser(email, password);
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(401).json({ error: (error as Error).message });
+  }
+}
+
+export async function googleLogin(req: Request, res: Response) {
+  try {
+    const { idToken } = req.body;
+
+    const result = await loginWithGoogle(idToken);
 
     res.status(200).json(result);
   } catch (error) {

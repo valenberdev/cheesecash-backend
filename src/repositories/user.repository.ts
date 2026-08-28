@@ -106,3 +106,40 @@ export async function updateUserPassword(
     [passwordHash, id],
   );
 }
+
+export async function findUserByGoogleId(
+  googleId: string,
+): Promise<User | null> {
+  const result = await pool.query(
+    "SELECT id, email, full_name, auth_provider, created_at, updated_at FROM users WHERE google_id = $1",
+    [googleId],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+}
+
+export async function linkGoogleAccount(userId: number, googleId: string): Promise<void> {
+  await pool.query(
+    `UPDATE users SET google_id = $1, updated_at = current_timestamp WHERE id = $2`,
+    [googleId, userId]
+  );
+}
+
+export async function createGoogleUser(
+  email: string,
+  fullName: string,
+  googleId: string
+): Promise<User> {
+  const result = await pool.query(
+    `INSERT INTO users (email, full_name, google_id, auth_provider)
+     VALUES ($1, $2, $3, 'google')
+     RETURNING id, email, full_name, auth_provider, created_at, updated_at`,
+    [email, fullName, googleId]
+  );
+
+  return result.rows[0];
+}
