@@ -5,6 +5,12 @@ import {
   findUserByIdWithPassword,
   updateUserPassword,
 } from "../repositories/user.repository";
+import {
+  findUserByGoogleId,
+  linkGoogleAccount,
+  createGoogleUser,
+} from "../repositories/user.repository";
+import { OAuth2Client } from "google-auth-library";
 
 export async function getUserProfile(userId: number) {
   const user = await findUserById(userId);

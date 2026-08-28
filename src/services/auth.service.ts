@@ -7,6 +7,10 @@ import {
 } from "../repositories/user.repository";
 import { createInitialBalances } from "../repositories/balance.repository";
 import { createWallet } from "../repositories/wallet.repository";
+import { findUserByGoogleId, linkGoogleAccount, createGoogleUser } from '../repositories/user.repository';
+import { OAuth2Client } from 'google-auth-library';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export async function registerUser(
   email: string,
@@ -52,4 +56,45 @@ export async function loginUser(email: string, password: string) {
   const { password_hash, ...userWithoutPassword } = user;
 
   return { token, user: userWithoutPassword };
+}
+
+export async function loginWithGoogle(idToken: string) {
+  const ticket = await googleClient.verifyIdToken({
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+
+  if (!payload || !payload.email || !payload.sub) {
+    throw new Error("Token de Google inválido");
+  }
+
+  const googleId = payload.sub;
+  const email = payload.email;
+  const fullName = payload.name || email;
+
+  let user = await findUserByGoogleId(googleId);
+
+  if (!user) {
+    const existingUserByEmail = await findUserByEmail(email);
+
+    if (existingUserByEmail) {
+      await linkGoogleAccount(existingUserByEmail.id, googleId);
+      user = existingUserByEmail;
+    } else {
+      user = await createGoogleUser(email, fullName, googleId);
+
+      const wallet = await createWallet(user.id);
+      await createInitialBalances(wallet.id);
+    }
+  }
+
+  const token = jwt.sign(
+    { userId: user.id },
+    process.env.JWT_SECRET as string,
+    { expiresIn: "1d" },
+  );
+
+  return { token, user };
 }
