@@ -3,7 +3,7 @@ import { getExchangeRate } from "./exchangeRate.service";
 import { findWalletByUserId } from "../repositories/wallet.repository";
 import { findBalancesByWalletId } from "../repositories/balance.repository";
 import { adjustBalance } from "../repositories/balance.repository";
-import { createTransaction } from "../repositories/transaction.repository";
+import { createTransaction, findTransactionsByWalletId } from "../repositories/transaction.repository";
 
 export async function executeTransaction(
   userId: number,
@@ -56,4 +56,17 @@ export async function executeTransaction(
   } finally {
     client.release();
   }
+}
+
+export async function getTransactionHistory(userId: number) {
+  const wallet = await findWalletByUserId(userId);
+
+  if (!wallet) {
+    throw new Error('Wallet no encontrada');
+  }
+
+  const transactions = await findTransactionsByWalletId(wallet.id);
+
+  return transactions;
+
 }
