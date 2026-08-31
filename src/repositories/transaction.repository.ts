@@ -1,4 +1,5 @@
 import { PoolClient } from "pg";
+import { pool } from "../config/db";
 
 interface Transaction {
   id: number;
@@ -39,4 +40,15 @@ export async function createTransaction(
   );
 
   return result.rows[0];
+}
+
+export async function findTransactionsByWalletId(
+  walletId: number,
+): Promise<Transaction[]> {
+  const result = await pool.query(
+    "SELECT * FROM transactions WHERE wallet_id = $1 ORDER BY created_at DESC",
+    [walletId],
+  );
+
+  return result.rows;
 }
