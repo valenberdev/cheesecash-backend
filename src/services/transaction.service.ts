@@ -4,7 +4,7 @@ import {
   findWalletByUserId,
   findWalletById,
 } from "../repositories/wallet.repository";
-import { findBalancesByWalletId } from "../repositories/balance.repository";
+import { findBalancesByWalletId, findBalancesByWalletIdForUpdate } from "../repositories/balance.repository";
 import { adjustBalance } from "../repositories/balance.repository";
 import {
   createTransaction,
@@ -54,38 +54,22 @@ export async function executeTransaction(
   type: string,
   fromCurrency: string,
   toCurrency: string,
-  fromAmount: number,
+  fromAmount: number
 ) {
   const wallet = await findWalletByUserId(userId);
 
   if (!wallet) {
-    throw new Error("Wallet no encontrada");
-  }
-
-  const balances = await findBalancesByWalletId(wallet.id);
-  const fromBalance = balances.find((b) => b.currency === fromCurrency);
-
-  if (
-    !fromBalance ||
-    fromAmount <= 0 ||
-    parseFloat(fromBalance.amount) < fromAmount
-  ) {
-    throw new Error("Saldo insuficiente");
+    throw new Error('Wallet no encontrada');
   }
 
   const rate = await getExchangeRate(fromCurrency, toCurrency);
   const toAmount = fromAmount * rate;
 
-  const isHighValue = await isHighValueTransaction(
-    fromCurrency,
-    fromAmount,
-    toCurrency,
-    toAmount,
-  );
+  const isHighValue = await isHighValueTransaction(fromCurrency, fromAmount, toCurrency, toAmount);
 
   if (isHighValue) {
-    const confirmationToken = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 horas
+    const confirmationToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     const pendingTransaction = await createPendingTransaction(
       wallet.id,
@@ -96,20 +80,20 @@ export async function executeTransaction(
       toAmount,
       rate,
       confirmationToken,
-      expiresAt,
+      expiresAt
     );
 
-    const user = await findUserById(userId);
+    const userForEmail = await findUserById(userId);
 
-    if (user) {
+    if (userForEmail) {
       const confirmLink = `${process.env.FRONTEND_URL}/confirm-transaction?token=${confirmationToken}`;
 
       await sendEmail(
-        user.email,
-        "Confirmá tu operación - CheeseCash",
+        userForEmail.email,
+        'Confirmá tu operación - CheeseCash',
         `<p>Tu operación de ${fromAmount} ${fromCurrency} a ${toCurrency} supera el monto habitual y necesita confirmación.</p>
          <p>El link vence en 2 horas.</p>
-         <p><a href="${confirmLink}">Confirmar operación</a></p>`,
+         <p><a href="${confirmLink}">Confirmar operación</a></p>`
       );
     }
 
@@ -121,7 +105,14 @@ export async function executeTransaction(
   let transaction;
 
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
+
+    const balances = await findBalancesByWalletIdForUpdate(client, wallet.id);
+    const fromBalance = balances.find((b) => b.currency === fromCurrency);
+
+    if (!fromBalance || fromAmount <= 0 || parseFloat(fromBalance.amount) < fromAmount) {
+      throw new Error('Saldo insuficiente');
+    }
 
     await adjustBalance(client, wallet.id, fromCurrency, -fromAmount);
     await adjustBalance(client, wallet.id, toCurrency, toAmount);
@@ -134,12 +125,12 @@ export async function executeTransaction(
       toCurrency,
       fromAmount,
       toAmount,
-      rate,
+      rate
     );
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     throw error;
   } finally {
     client.release();
