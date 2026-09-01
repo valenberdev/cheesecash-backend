@@ -6,14 +6,19 @@ import {
   findUserByEmailWithPassword,
   setResetToken,
   findUserByResetToken,
-  resetPassword
+  resetPassword,
 } from "../repositories/user.repository";
 import { createInitialBalances } from "../repositories/balance.repository";
 import { createWallet } from "../repositories/wallet.repository";
-import { findUserByGoogleId, linkGoogleAccount, createGoogleUser } from '../repositories/user.repository';
-import { OAuth2Client } from 'google-auth-library';
-import crypto from 'crypto';
-import { sendEmail } from './email.service';
+import {
+  findUserByGoogleId,
+  linkGoogleAccount,
+  createGoogleUser,
+} from "../repositories/user.repository";
+import { OAuth2Client } from "google-auth-library";
+import crypto from "crypto";
+import { sendEmail } from "./email.service";
+import { pool } from "../config/db";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -21,14 +26,14 @@ export async function registerUser(
   email: string,
   password: string,
   fullName: string,
-  birthDate: Date
+  birthDate: Date,
 ) {
   validatePasswordLength(password);
 
   const age = calculateAge(birthDate, new Date());
 
   if (age < 18) {
-    throw new Error('Debés ser mayor de 18 años para registrarte');
+    throw new Error("Debés ser mayor de 18 años para registrarte");
   }
 
   const existingUser = await findUserByEmail(email);
@@ -39,11 +44,26 @@ export async function registerUser(
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const newUser = await createUser(email, passwordHash, fullName);
+  const client = await pool.connect();
 
-  const wallet = await createWallet(newUser.id);
+  let newUser;
 
-  await createInitialBalances(wallet.id);
+  try {
+    await client.query("BEGIN");
+
+    newUser = await createUser(client, email, passwordHash, fullName);
+
+    const wallet = await createWallet(client, newUser.id);
+
+    await createInitialBalances(client, wallet.id);
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 
   return newUser;
 }
@@ -85,8 +105,8 @@ export async function loginWithGoogle(idToken: string) {
   }
 
   if (!payload.email_verified) {
-  throw new Error('Email de Google no verificado');
-}
+    throw new Error("Email de Google no verificado");
+  }
 
   const googleId = payload.sub;
   const email = payload.email;
@@ -101,10 +121,24 @@ export async function loginWithGoogle(idToken: string) {
       await linkGoogleAccount(existingUserByEmail.id, googleId);
       user = existingUserByEmail;
     } else {
-      user = await createGoogleUser(email, fullName, googleId);
+      const client = await pool.connect();
 
-      const wallet = await createWallet(user.id);
-      await createInitialBalances(wallet.id);
+      try {
+        await client.query("BEGIN");
+
+        user = await createGoogleUser(client, email, fullName, googleId);
+
+        const wallet = await createWallet(client, user.id);
+
+        await createInitialBalances(client, wallet.id);
+
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
     }
   }
 
@@ -117,7 +151,6 @@ export async function loginWithGoogle(idToken: string) {
   return { token, user };
 }
 
-
 export async function requestPasswordReset(email: string) {
   const user = await findUserByEmail(email);
 
@@ -125,7 +158,7 @@ export async function requestPasswordReset(email: string) {
     return;
   }
 
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
   await setResetToken(email, token, expiresAt);
@@ -134,9 +167,9 @@ export async function requestPasswordReset(email: string) {
 
   await sendEmail(
     email,
-    'Recuperación de contraseña - CheeseCash',
+    "Recuperación de contraseña - CheeseCash",
     `<p>Hacé click en el siguiente link para restablecer tu contraseña. El link vence en 1 hora.</p>
-     <p><a href="${resetLink}">Restablecer contraseña</a></p>`
+     <p><a href="${resetLink}">Restablecer contraseña</a></p>`,
   );
 }
 
@@ -144,7 +177,7 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
   const user = await findUserByResetToken(token);
 
   if (!user || user.reset_token_expires < new Date()) {
-    throw new Error('Token inválido o expirado');
+    throw new Error("Token inválido o expirado");
   }
 
   validatePasswordLength(newPassword);
@@ -156,7 +189,7 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
 
 export function validatePasswordLength(password: string): void {
   if (password.length < 8) {
-    throw new Error('La contraseña debe tener al menos 8 caracteres');
+    throw new Error("La contraseña debe tener al menos 8 caracteres");
   }
 }
 

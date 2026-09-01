@@ -1,5 +1,6 @@
 import { email } from "zod";
 import { pool } from "../config/db";
+import { PoolClient } from 'pg';
 
 interface User {
   id: number;
@@ -24,11 +25,12 @@ export async function findUserByEmail(email: string): Promise<User | null> {
 }
 
 export async function createUser(
+  client: PoolClient,
   email: string,
   passwordHash: string,
   fullName: string,
 ): Promise<User> {
-  const result = await pool.query(
+  const result = await client.query(
     `INSERT INTO users (email, password_hash, full_name)
      VALUES ($1, $2, $3)
      RETURNING id, email, full_name, created_at, updated_at`,
@@ -37,7 +39,6 @@ export async function createUser(
 
   return result.rows[0];
 }
-
 interface UserWithPassword extends User {
   password_hash: string;
 }
@@ -131,11 +132,12 @@ export async function linkGoogleAccount(userId: number, googleId: string): Promi
 }
 
 export async function createGoogleUser(
+  client: PoolClient,
   email: string,
   fullName: string,
   googleId: string
 ): Promise<User> {
-  const result = await pool.query(
+  const result = await client.query(
     `INSERT INTO users (email, full_name, google_id, auth_provider)
      VALUES ($1, $2, $3, 'google')
      RETURNING id, email, full_name, auth_provider, created_at, updated_at`,

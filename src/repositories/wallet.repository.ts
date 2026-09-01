@@ -1,4 +1,5 @@
 import { pool } from "../config/db";
+import { PoolClient } from 'pg';
 
 interface Wallet {
   id: number;
@@ -9,8 +10,8 @@ interface Wallet {
   updated_at: Date;
 }
 
-export async function createWallet(userId: number): Promise<Wallet> {
-  const result = await pool.query(
+export async function createWallet(client: PoolClient, userId: number): Promise<Wallet> {
+  const result = await client.query(
     `INSERT INTO wallets (user_id) VALUES ($1) RETURNING *`,
     [userId],
   );
