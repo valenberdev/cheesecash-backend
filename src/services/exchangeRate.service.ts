@@ -72,3 +72,14 @@ export async function getExchangeRate(fromCurrency: string, toCurrency: string):
 
   throw new Error('Combinación de monedas no soportada');
 }
+
+export async function getAllRates(): Promise<Record<string, number>> {
+  const fiatRates = await getFiatRates();
+  const btcPriceInUsd = await getBtcPriceInUsd();
+
+  return {
+    ...fiatRates,
+    USD: 1,
+    BTC: 1 / btcPriceInUsd,
+  };
+}

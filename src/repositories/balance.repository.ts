@@ -45,3 +45,12 @@ export async function adjustBalance(
     [delta, walletId, currency]
   );
 }
+
+export async function findBalancesByWalletIdForUpdate(client: PoolClient, walletId: number): Promise<Balance[]> {
+  const result = await client.query(
+    'SELECT * FROM balances WHERE wallet_id = $1 FOR UPDATE',
+    [walletId]
+  );
+
+  return result.rows;
+}

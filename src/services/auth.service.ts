@@ -84,6 +84,10 @@ export async function loginWithGoogle(idToken: string) {
     throw new Error("Token de Google inválido");
   }
 
+  if (!payload.email_verified) {
+  throw new Error('Email de Google no verificado');
+}
+
   const googleId = payload.sub;
   const email = payload.email;
   const fullName = payload.name || email;
