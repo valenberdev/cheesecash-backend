@@ -65,7 +65,11 @@ export async function executeTransaction(
   const balances = await findBalancesByWalletId(wallet.id);
   const fromBalance = balances.find((b) => b.currency === fromCurrency);
 
-  if (!fromBalance || parseFloat(fromBalance.amount) < fromAmount) {
+  if (
+    !fromBalance ||
+    fromAmount <= 0 ||
+    parseFloat(fromBalance.amount) < fromAmount
+  ) {
     throw new Error("Saldo insuficiente");
   }
 
@@ -166,31 +170,44 @@ export async function confirmTransaction(token: string) {
   const transaction = await findTransactionByConfirmationToken(token);
 
   if (!transaction) {
-    throw new Error('Token de confirmación inválido');
+    throw new Error("Token de confirmación inválido");
   }
 
-  if (transaction.status !== 'pending') {
-    throw new Error('Esta transacción ya fue procesada');
+  if (transaction.status !== "pending") {
+    throw new Error("Esta transacción ya fue procesada");
   }
 
-  if (!transaction.expires_at || new Date(transaction.expires_at) < new Date()) {
+  if (
+    !transaction.expires_at ||
+    new Date(transaction.expires_at) < new Date()
+  ) {
     await failPendingTransaction(transaction.id);
-    throw new Error('El link de confirmación expiró');
+    throw new Error("El link de confirmación expiró");
   }
 
   const client = await pool.connect();
 
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
-    await adjustBalance(client, transaction.wallet_id, transaction.from_currency, -parseFloat(transaction.from_amount));
-    await adjustBalance(client, transaction.wallet_id, transaction.to_currency, parseFloat(transaction.to_amount));
+    await adjustBalance(
+      client,
+      transaction.wallet_id,
+      transaction.from_currency,
+      -parseFloat(transaction.from_amount),
+    );
+    await adjustBalance(
+      client,
+      transaction.wallet_id,
+      transaction.to_currency,
+      parseFloat(transaction.to_amount),
+    );
 
     await confirmPendingTransaction(client, transaction.id);
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
@@ -208,7 +225,7 @@ export async function confirmTransaction(token: string) {
 
   return {
     ...transaction,
-    status: 'success',
+    status: "success",
     confirmation_token: null,
     expires_at: null,
   };
