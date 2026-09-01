@@ -31,3 +31,16 @@ export async function findWalletByUserId(
 
   return result.rows[0];
 }
+
+export async function findWalletById(walletId: number): Promise<Wallet | null> {
+  const result = await pool.query(
+    'SELECT * FROM wallets WHERE id = $1',
+    [walletId]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+}

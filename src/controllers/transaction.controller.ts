@@ -1,6 +1,6 @@
-import { Response } from "express";
+import { Response, Request } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
-import { executeTransaction, getTransactionHistory } from "../services/transaction.service";
+import { executeTransaction, getTransactionHistory, confirmTransaction } from "../services/transaction.service";
 
 export async function createTransactionEndpoint(
   req: AuthRequest,
@@ -40,5 +40,17 @@ export async function getHistory(req: AuthRequest, res: Response) {
     res.status(200).json(history)
   } catch (error) {
     res.status(404).json({ error: (error as Error).message });
+  }
+}
+
+export async function confirmTransactionEndpoint(req: Request, res: Response) {
+  try {
+    const token = req.params.token as string;
+
+    const transaction = await confirmTransaction(token);
+
+    res.status(200).json(transaction);
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
   }
 }

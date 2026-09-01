@@ -11,6 +11,7 @@ import {
   createGoogleUser,
 } from "../repositories/user.repository";
 import { OAuth2Client } from "google-auth-library";
+import { validatePasswordLength } from './auth.service';
 
 export async function getUserProfile(userId: number) {
   const user = await findUserById(userId);
@@ -47,6 +48,8 @@ export async function changePassword(
   if (!passwordMatches) {
     throw new Error("Contraseña actual incorrecta");
   }
+
+  validatePasswordLength(newPassword);
 
   const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
