@@ -3,7 +3,12 @@ import { getExchangeRate } from "./exchangeRate.service";
 import { findWalletByUserId } from "../repositories/wallet.repository";
 import { findBalancesByWalletId } from "../repositories/balance.repository";
 import { adjustBalance } from "../repositories/balance.repository";
-import { createTransaction, findTransactionsByWalletId } from "../repositories/transaction.repository";
+import {
+  createTransaction,
+  findTransactionsByWalletId,
+} from "../repositories/transaction.repository";
+import { findUserById } from "../repositories/user.repository";
+import { sendTransactionReceiptEmail } from "./email.service";
 
 export async function executeTransaction(
   userId: number,
@@ -30,13 +35,15 @@ export async function executeTransaction(
 
   const client = await pool.connect();
 
+  let transaction;
+
   try {
     await client.query("BEGIN");
 
     await adjustBalance(client, wallet.id, fromCurrency, -fromAmount);
     await adjustBalance(client, wallet.id, toCurrency, toAmount);
 
-    const transaction = await createTransaction(
+    transaction = await createTransaction(
       client,
       wallet.id,
       type,
@@ -48,25 +55,30 @@ export async function executeTransaction(
     );
 
     await client.query("COMMIT");
-
-    return transaction;
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
   }
+
+  const user = await findUserById(userId);
+
+  if (user) {
+    await sendTransactionReceiptEmail(user.email, transaction);
+  }
+
+  return transaction;
 }
 
 export async function getTransactionHistory(userId: number) {
   const wallet = await findWalletByUserId(userId);
 
   if (!wallet) {
-    throw new Error('Wallet no encontrada');
+    throw new Error("Wallet no encontrada");
   }
 
   const transactions = await findTransactionsByWalletId(wallet.id);
 
   return transactions;
-
 }
