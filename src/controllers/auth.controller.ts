@@ -3,9 +3,11 @@ import { registerUser, loginUser, loginWithGoogle, requestPasswordReset, confirm
 
 export async function register(req: Request, res: Response) {
   try {
-    const { email, password, fullName } = req.body;
+    const { email, password, fullName, birthDate } = req.body;
 
-    const newUser = await registerUser(email, password, fullName);
+    const birthDateObj = new Date(birthDate);
+
+    const newUser = await registerUser(email, password, fullName, birthDateObj);
 
     res.status(201).json(newUser);
   } catch (error) {

@@ -21,7 +21,16 @@ export async function registerUser(
   email: string,
   password: string,
   fullName: string,
+  birthDate: Date
 ) {
+  validatePasswordLength(password);
+
+  const age = calculateAge(birthDate, new Date());
+
+  if (age < 18) {
+    throw new Error('Debés ser mayor de 18 años para registrarte');
+  }
+
   const existingUser = await findUserByEmail(email);
 
   if (existingUser) {
@@ -134,7 +143,28 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
     throw new Error('Token inválido o expirado');
   }
 
+  validatePasswordLength(newPassword);
+
   const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
   await resetPassword(user.id, newPasswordHash);
+}
+
+export function validatePasswordLength(password: string): void {
+  if (password.length < 8) {
+    throw new Error('La contraseña debe tener al menos 8 caracteres');
+  }
+}
+
+function calculateAge(birthDate: Date, today: Date): number {
+  let age = today.getFullYear() - birthDate.getFullYear();
+
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age--;
+  }
+
+  return age;
 }
