@@ -1,3 +1,4 @@
+import { email } from "zod";
 import { pool } from "../config/db";
 
 interface User {
@@ -142,4 +143,39 @@ export async function createGoogleUser(
   );
 
   return result.rows[0];
+}
+
+export async function setResetToken(
+  email: string,
+  token: string,
+  expiresAt: Date
+): Promise<void> {
+  await pool.query(
+    `UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3`,
+    [ token, expiresAt, email ]
+  );
+}
+
+interface UserWithResetToken extends User {
+  reset_token_expires: Date;
+}
+
+export async function findUserByResetToken(token: string): Promise<UserWithResetToken | null> {
+  const result = await pool.query(
+    'SELECT id, email, full_name, auth_provider, reset_token_expires, created_at, updated_at FROM users WHERE reset_token = $1',
+    [ token ]
+  );
+
+  if ( result.rows.length === 0 ) {
+    return null;
+  }
+
+  return result.rows[0];
+}
+
+export async function resetPassword(userId: number, newPasswordHash: string): Promise<void> {
+  await pool.query(
+    `UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = current_timestamp WHERE id = $2`,
+    [newPasswordHash, userId]
+  );
 }

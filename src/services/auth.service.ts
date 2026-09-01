@@ -4,11 +4,16 @@ import {
   findUserByEmail,
   createUser,
   findUserByEmailWithPassword,
+  setResetToken,
+  findUserByResetToken,
+  resetPassword
 } from "../repositories/user.repository";
 import { createInitialBalances } from "../repositories/balance.repository";
 import { createWallet } from "../repositories/wallet.repository";
 import { findUserByGoogleId, linkGoogleAccount, createGoogleUser } from '../repositories/user.repository';
 import { OAuth2Client } from 'google-auth-library';
+import crypto from 'crypto';
+import { sendEmail } from './email.service';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -97,4 +102,39 @@ export async function loginWithGoogle(idToken: string) {
   );
 
   return { token, user };
+}
+
+
+export async function requestPasswordReset(email: string) {
+  const user = await findUserByEmail(email);
+
+  if (!user) {
+    return;
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+  await setResetToken(email, token, expiresAt);
+
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+  await sendEmail(
+    email,
+    'Recuperación de contraseña - CheeseCash',
+    `<p>Hacé click en el siguiente link para restablecer tu contraseña. El link vence en 1 hora.</p>
+     <p><a href="${resetLink}">Restablecer contraseña</a></p>`
+  );
+}
+
+export async function confirmPasswordReset(token: string, newPassword: string) {
+  const user = await findUserByResetToken(token);
+
+  if (!user || user.reset_token_expires < new Date()) {
+    throw new Error('Token inválido o expirado');
+  }
+
+  const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+  await resetPassword(user.id, newPasswordHash);
 }
