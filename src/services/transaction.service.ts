@@ -173,7 +173,11 @@ export async function executeTransaction(
   const user = await findUserById(userId);
 
   if (user) {
-    await sendTransactionReceiptEmail(user.email, transaction);
+    try {
+      await sendTransactionReceiptEmail(user.email, transaction);
+    } catch (emailError) {
+      console.error("No se pudo enviar el comprobante:", emailError);
+    }
   }
 
   return transaction;
@@ -258,14 +262,18 @@ export async function confirmTransaction(token: string) {
   } finally {
     client.release();
   }
-
+  
   const wallet = await findWalletById(transaction.wallet_id);
 
   if (wallet) {
     const user = await findUserById(wallet.user_id);
 
     if (user) {
-      await sendTransactionReceiptEmail(user.email, transaction);
+      try {
+        await sendTransactionReceiptEmail(user.email, transaction);
+      } catch (emailError) {
+        console.error("No se pudo enviar el comprobante:", emailError);
+      }
     }
   }
 
