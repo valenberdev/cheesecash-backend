@@ -4,7 +4,10 @@ import {
   findWalletByUserId,
   findWalletById,
 } from "../repositories/wallet.repository";
-import { findBalancesByWalletId, findBalancesByWalletIdForUpdate } from "../repositories/balance.repository";
+import {
+  findBalancesByWalletId,
+  findBalancesByWalletIdForUpdate,
+} from "../repositories/balance.repository";
 import { adjustBalance } from "../repositories/balance.repository";
 import {
   createTransaction,
@@ -54,21 +57,48 @@ export async function executeTransaction(
   type: string,
   fromCurrency: string,
   toCurrency: string,
-  fromAmount: number
+  fromAmount: number,
 ) {
   const wallet = await findWalletByUserId(userId);
 
   if (!wallet) {
-    throw new Error('Wallet no encontrada');
+    throw new Error("Wallet no encontrada");
   }
 
   const rate = await getExchangeRate(fromCurrency, toCurrency);
   const toAmount = fromAmount * rate;
 
-  const isHighValue = await isHighValueTransaction(fromCurrency, fromAmount, toCurrency, toAmount);
+  const MIN_RESULT_AMOUNT: Record<string, number> = {
+    ARS: 0.01,
+    USD: 0.01,
+    EUR: 0.01,
+    BTC: 0.00000001,
+  };
+
+  if (toAmount < MIN_RESULT_AMOUNT[toCurrency]) {
+    throw new Error("El monto es demasiado bajo para esta operación");
+  }
+
+  const balances = await findBalancesByWalletId(wallet.id);
+  const fromBalance = balances.find((b) => b.currency === fromCurrency);
+
+  if (
+    !fromBalance ||
+    fromAmount <= 0 ||
+    parseFloat(fromBalance.amount) < fromAmount
+  ) {
+    throw new Error("Saldo insuficiente");
+  }
+
+  const isHighValue = await isHighValueTransaction(
+    fromCurrency,
+    fromAmount,
+    toCurrency,
+    toAmount,
+  );
 
   if (isHighValue) {
-    const confirmationToken = crypto.randomBytes(32).toString('hex');
+    const confirmationToken = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     const pendingTransaction = await createPendingTransaction(
@@ -80,7 +110,7 @@ export async function executeTransaction(
       toAmount,
       rate,
       confirmationToken,
-      expiresAt
+      expiresAt,
     );
 
     const userForEmail = await findUserById(userId);
@@ -90,10 +120,10 @@ export async function executeTransaction(
 
       await sendEmail(
         userForEmail.email,
-        'Confirmá tu operación - CheeseCash',
+        "Confirmá tu operación - CheeseCash",
         `<p>Tu operación de ${fromAmount} ${fromCurrency} a ${toCurrency} supera el monto habitual y necesita confirmación.</p>
          <p>El link vence en 2 horas.</p>
-         <p><a href="${confirmLink}">Confirmar operación</a></p>`
+         <p><a href="${confirmLink}">Confirmar operación</a></p>`,
       );
     }
 
@@ -105,13 +135,17 @@ export async function executeTransaction(
   let transaction;
 
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const balances = await findBalancesByWalletIdForUpdate(client, wallet.id);
     const fromBalance = balances.find((b) => b.currency === fromCurrency);
 
-    if (!fromBalance || fromAmount <= 0 || parseFloat(fromBalance.amount) < fromAmount) {
-      throw new Error('Saldo insuficiente');
+    if (
+      !fromBalance ||
+      fromAmount <= 0 ||
+      parseFloat(fromBalance.amount) < fromAmount
+    ) {
+      throw new Error("Saldo insuficiente");
     }
 
     await adjustBalance(client, wallet.id, fromCurrency, -fromAmount);
@@ -125,12 +159,12 @@ export async function executeTransaction(
       toCurrency,
       fromAmount,
       toAmount,
-      rate
+      rate,
     );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
@@ -181,11 +215,24 @@ export async function confirmTransaction(token: string) {
   try {
     await client.query("BEGIN");
 
+    const balances = await findBalancesByWalletIdForUpdate(
+      client,
+      transaction.wallet_id,
+    );
+    const fromBalance = balances.find(
+      (b) => b.currency === transaction.from_currency,
+    );
+    const fromAmountNum = parseFloat(transaction.from_amount);
+
+    if (!fromBalance || parseFloat(fromBalance.amount) < fromAmountNum) {
+      throw new Error("Saldo insuficiente para confirmar la operación");
+    }
+
     await adjustBalance(
       client,
       transaction.wallet_id,
       transaction.from_currency,
-      -parseFloat(transaction.from_amount),
+      -fromAmountNum,
     );
     await adjustBalance(
       client,
@@ -199,6 +246,14 @@ export async function confirmTransaction(token: string) {
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
+
+    if (
+      (error as Error).message ===
+      "Saldo insuficiente para confirmar la operación"
+    ) {
+      await failPendingTransaction(transaction.id);
+    }
+
     throw error;
   } finally {
     client.release();

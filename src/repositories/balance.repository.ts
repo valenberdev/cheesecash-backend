@@ -3,14 +3,27 @@ import { PoolClient } from 'pg';
 
 const SUPPORTED_CURRENCIES = ["ARS", "USD", "EUR", "BTC"];
 
+const DEMO_INITIAL_BALANCES: Record<string, number> = {
+  ARS: 10000000,
+  USD: 100,
+  EUR: 100,
+  BTC: 0.01,
+};
+
 export async function createInitialBalances(client: PoolClient, walletId: number): Promise<void> {
-  const values = SUPPORTED_CURRENCIES.map(
-    (currency, index) => `($1, $${index + 2}, 0)`,
-  ).join(", ");
+  const currencies = Object.keys(DEMO_INITIAL_BALANCES);
+  const values = currencies
+    .map((currency, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
+    .join(', ');
+
+  const params: (number | string)[] = [walletId];
+  currencies.forEach((c) => {
+    params.push(c, DEMO_INITIAL_BALANCES[c]);
+  });
 
   await client.query(
     `INSERT INTO balances (wallet_id, currency, amount) VALUES ${values}`,
-    [walletId, ...SUPPORTED_CURRENCIES],
+    params
   );
 }
 
