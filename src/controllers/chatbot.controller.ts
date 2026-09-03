@@ -14,6 +14,7 @@ export async function sendMessage(req: Request, res: Response) {
 
     res.status(200).json({ reply });
   } catch (error) {
+    console.error('Error en chatbot:', error);
     res.status(500).json({ error: 'No se pudo procesar tu mensaje en este momento' });
   }
 }
