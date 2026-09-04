@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { httpServer } from './config/socket';
 
 const PORT = process.env.PORT || 3000;
