@@ -12,12 +12,12 @@ import {
   findTransferByConfirmationToken,
   confirmPendingTransfer,
   failPendingTransfer,
-  findTransfersByWalletId
+  findTransfersByWalletId,
 } from "../repositories/transfer.repository";
 import { isHighValueTransaction } from "./transaction.service";
 import crypto from "crypto";
 import { sendEmail } from "./email.service";
-import { findTransactionsByWalletId } from '../repositories/transaction.repository';
+import { findTransactionsByWalletId } from "../repositories/transaction.repository";
 
 export async function executeTransfer(
   fromUserId: number,
@@ -59,6 +59,7 @@ export async function executeTransfer(
   }
 
   const isHighValue = await isHighValueTransaction(
+    fromUserId,
     currency,
     amount,
     currency,
@@ -209,30 +210,33 @@ export async function getCombinedHistory(userId: number) {
   const wallet = await findWalletByUserId(userId);
 
   if (!wallet) {
-    throw new Error('Wallet no encontrada');
+    throw new Error("Wallet no encontrada");
   }
 
   const transactions = await findTransactionsByWalletId(wallet.id);
   const transfers = await findTransfersByWalletId(wallet.id);
 
   const normalizedTransactions = transactions.map((t) => ({
-    kind: 'transaction' as const,
+    kind: "transaction" as const,
     id: t.id,
     created_at: t.created_at,
     detail: t,
   }));
 
   const normalizedTransfers = transfers.map((t) => ({
-    kind: 'transfer' as const,
+    kind: "transfer" as const,
     id: t.id,
     created_at: t.created_at,
-    direction: t.from_wallet_id === wallet.id ? 'sent' : 'received',
+    direction: t.from_wallet_id === wallet.id ? "sent" : "received",
     detail: t,
   }));
 
   const combined = [...normalizedTransactions, ...normalizedTransfers];
 
-  combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  combined.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
 
   return combined;
 }

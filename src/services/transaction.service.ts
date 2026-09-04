@@ -17,41 +17,43 @@ import {
   confirmPendingTransaction,
   failPendingTransaction,
 } from "../repositories/transaction.repository";
-import { findUserById } from "../repositories/user.repository";
+import { findUserById, getUserThresholds } from "../repositories/user.repository";
 import { sendTransactionReceiptEmail, sendEmail } from "./email.service";
 import crypto from "crypto";
 
-const HIGH_VALUE_THRESHOLDS: Record<string, number> = {
-  ARS: 500000,
-  USD: 500,
-  EUR: 500,
-};
-
 async function exceedsThreshold(
+  thresholds: { threshold_ars: string; threshold_usd: string; threshold_eur: string; threshold_btc_usd: string },
   currency: string,
-  amount: number,
+  amount: number
 ): Promise<boolean> {
-  if (currency === "BTC") {
-    const btcToUsdRate = await getExchangeRate("BTC", "USD");
+  if (currency === 'BTC') {
+    const btcToUsdRate = await getExchangeRate('BTC', 'USD');
     const amountInUsd = amount * btcToUsdRate;
-    return amountInUsd >= 1000;
+    return amountInUsd >= parseFloat(thresholds.threshold_btc_usd);
   }
 
-  return amount >= HIGH_VALUE_THRESHOLDS[currency];
+  const thresholdKey = `threshold_${currency.toLowerCase()}` as keyof typeof thresholds;
+  return amount >= parseFloat(thresholds[thresholdKey]);
 }
 
 export async function isHighValueTransaction(
+  userId: number,
   fromCurrency: string,
   fromAmount: number,
   toCurrency: string,
-  toAmount: number,
+  toAmount: number
 ): Promise<boolean> {
-  const fromExceeds = await exceedsThreshold(fromCurrency, fromAmount);
-  const toExceeds = await exceedsThreshold(toCurrency, toAmount);
+  const thresholds = await getUserThresholds(userId);
+
+  if (!thresholds) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  const fromExceeds = await exceedsThreshold(thresholds, fromCurrency, fromAmount);
+  const toExceeds = await exceedsThreshold(thresholds, toCurrency, toAmount);
 
   return fromExceeds || toExceeds;
 }
-
 export async function executeTransaction(
   userId: number,
   type: string,
@@ -91,6 +93,7 @@ export async function executeTransaction(
   }
 
   const isHighValue = await isHighValueTransaction(
+    userId,
     fromCurrency,
     fromAmount,
     toCurrency,
