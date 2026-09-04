@@ -203,7 +203,7 @@ export function validatePasswordLength(password: string): void {
   }
 }
 
-function calculateAge(birthDate: Date, today: Date): number {
+export function calculateAge(birthDate: Date, today: Date): number {
   let age = today.getFullYear() - birthDate.getFullYear();
 
   const monthDiff = today.getMonth() - birthDate.getMonth();
