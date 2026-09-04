@@ -1,4 +1,3 @@
-import { email } from "zod";
 import { pool } from "../config/db";
 import { PoolClient } from 'pg';
 
@@ -7,6 +6,7 @@ interface User {
   email: string;
   full_name: string;
   auth_provider: string;
+  birth_date: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -29,16 +29,18 @@ export async function createUser(
   email: string,
   passwordHash: string,
   fullName: string,
+  birthDate: Date
 ): Promise<User> {
   const result = await client.query(
-    `INSERT INTO users (email, password_hash, full_name)
-     VALUES ($1, $2, $3)
-     RETURNING id, email, full_name, created_at, updated_at`,
-    [email, passwordHash, fullName],
+    `INSERT INTO users (email, password_hash, full_name, birth_date)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, email, full_name, birth_date, created_at, updated_at`,
+    [email, passwordHash, fullName, birthDate],
   );
 
   return result.rows[0];
 }
+
 interface UserWithPassword extends User {
   password_hash: string;
 }
@@ -179,5 +181,28 @@ export async function resetPassword(userId: number, newPasswordHash: string): Pr
   await pool.query(
     `UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = current_timestamp WHERE id = $2`,
     [newPasswordHash, userId]
+  );
+}
+
+export async function getUserThresholds(userId: number) {
+  const result = await pool.query(
+    'SELECT threshold_ars, threshold_usd, threshold_eur, threshold_btc_usd FROM users WHERE id = $1',
+    [userId]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+}
+
+export async function updateUserThresholds(
+  userId: number,
+  thresholds: { ars: number; usd: number; eur: number; btcUsd: number }
+): Promise<void> {
+  await pool.query(
+    `UPDATE users SET threshold_ars = $1, threshold_usd = $2, threshold_eur = $3, threshold_btc_usd = $4, updated_at = current_timestamp WHERE id = $5`,
+    [thresholds.ars, thresholds.usd, thresholds.eur, thresholds.btcUsd, userId]
   );
 }

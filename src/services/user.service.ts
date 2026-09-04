@@ -3,7 +3,7 @@ import {
   findUserById,
   updateUserFullName,
   findUserByIdWithPassword,
-  updateUserPassword,
+  updateUserPassword,getUserThresholds, updateUserThresholds
 } from "../repositories/user.repository";
 import {
   findUserByGoogleId,
@@ -54,4 +54,24 @@ export async function changePassword(
   const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
   await updateUserPassword(userId, newPasswordHash);
+}
+
+export async function getMyThresholds(userId: number) {
+  const thresholds = await getUserThresholds(userId);
+
+  if (!thresholds) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  return thresholds;
+}
+
+export async function updateMyThresholds(
+  userId: number,
+  ars: number,
+  usd: number,
+  eur: number,
+  btcUsd: number
+) {
+  await updateUserThresholds(userId, { ars, usd, eur, btcUsd });
 }

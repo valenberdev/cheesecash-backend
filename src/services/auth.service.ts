@@ -51,7 +51,7 @@ export async function registerUser(
   try {
     await client.query("BEGIN");
 
-    newUser = await createUser(client, email, passwordHash, fullName);
+    newUser = await createUser(client, email, passwordHash, fullName, birthDate);
 
     const wallet = await createWallet(client, newUser.id);
 
