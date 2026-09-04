@@ -3,7 +3,12 @@ import {
   findUserById,
   updateUserFullName,
   findUserByIdWithPassword,
-  updateUserPassword,getUserThresholds, updateUserThresholds
+  updateUserPassword,
+  getUserThresholds,
+  updateUserThresholds,
+  getUserPin,
+  setUserPin,
+  generateUniquePin,
 } from "../repositories/user.repository";
 import {
   findUserByGoogleId,
@@ -11,7 +16,7 @@ import {
   createGoogleUser,
 } from "../repositories/user.repository";
 import { OAuth2Client } from "google-auth-library";
-import { validatePasswordLength } from './auth.service';
+import { validatePasswordLength } from "./auth.service";
 
 export async function getUserProfile(userId: number) {
   const user = await findUserById(userId);
@@ -60,7 +65,7 @@ export async function getMyThresholds(userId: number) {
   const thresholds = await getUserThresholds(userId);
 
   if (!thresholds) {
-    throw new Error('Usuario no encontrado');
+    throw new Error("Usuario no encontrado");
   }
 
   return thresholds;
@@ -71,7 +76,18 @@ export async function updateMyThresholds(
   ars: number,
   usd: number,
   eur: number,
-  btcUsd: number
+  btcUsd: number,
 ) {
   await updateUserThresholds(userId, { ars, usd, eur, btcUsd });
+}
+
+export async function getMyPin(userId: number) {
+  let pin = await getUserPin(userId);
+
+  if (!pin) {
+    pin = await generateUniquePin();
+    await setUserPin(userId, pin);
+  }
+
+  return pin;
 }

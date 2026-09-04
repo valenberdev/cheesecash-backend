@@ -18,10 +18,12 @@ import { isHighValueTransaction } from "./transaction.service";
 import crypto from "crypto";
 import { sendEmail } from "./email.service";
 import { findTransactionsByWalletId } from "../repositories/transaction.repository";
+import { findUserByPin } from "../repositories/user.repository";
 
 export async function executeTransfer(
   fromUserId: number,
   toEmail: string,
+  toPin: string,
   currency: string,
   amount: number,
 ) {
@@ -35,7 +37,15 @@ export async function executeTransfer(
     throw new Error("Wallet no encontrada");
   }
 
-  const toUser = await findUserByEmail(toEmail);
+  let toUser;
+
+  if (toEmail) {
+    toUser = await findUserByEmail(toEmail);
+  } else if (toPin) {
+    toUser = await findUserByPin(toPin);
+  } else {
+    throw new Error("Tenés que indicar un email o un PIN de destinatario");
+  }
 
   if (!toUser) {
     throw new Error("El destinatario no existe");
