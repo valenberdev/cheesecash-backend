@@ -17,22 +17,32 @@ import {
   confirmPendingTransaction,
   failPendingTransaction,
 } from "../repositories/transaction.repository";
-import { findUserById, getUserThresholds } from "../repositories/user.repository";
+import {
+  findUserById,
+  getUserThresholds,
+} from "../repositories/user.repository";
 import { sendTransactionReceiptEmail, sendEmail } from "./email.service";
 import crypto from "crypto";
+import { io } from "../config/socket";
 
 async function exceedsThreshold(
-  thresholds: { threshold_ars: string; threshold_usd: string; threshold_eur: string; threshold_btc_usd: string },
+  thresholds: {
+    threshold_ars: string;
+    threshold_usd: string;
+    threshold_eur: string;
+    threshold_btc_usd: string;
+  },
   currency: string,
-  amount: number
+  amount: number,
 ): Promise<boolean> {
-  if (currency === 'BTC') {
-    const btcToUsdRate = await getExchangeRate('BTC', 'USD');
+  if (currency === "BTC") {
+    const btcToUsdRate = await getExchangeRate("BTC", "USD");
     const amountInUsd = amount * btcToUsdRate;
     return amountInUsd >= parseFloat(thresholds.threshold_btc_usd);
   }
 
-  const thresholdKey = `threshold_${currency.toLowerCase()}` as keyof typeof thresholds;
+  const thresholdKey =
+    `threshold_${currency.toLowerCase()}` as keyof typeof thresholds;
   return amount >= parseFloat(thresholds[thresholdKey]);
 }
 
@@ -41,15 +51,19 @@ export async function isHighValueTransaction(
   fromCurrency: string,
   fromAmount: number,
   toCurrency: string,
-  toAmount: number
+  toAmount: number,
 ): Promise<boolean> {
   const thresholds = await getUserThresholds(userId);
 
   if (!thresholds) {
-    throw new Error('Usuario no encontrado');
+    throw new Error("Usuario no encontrado");
   }
 
-  const fromExceeds = await exceedsThreshold(thresholds, fromCurrency, fromAmount);
+  const fromExceeds = await exceedsThreshold(
+    thresholds,
+    fromCurrency,
+    fromAmount,
+  );
   const toExceeds = await exceedsThreshold(thresholds, toCurrency, toAmount);
 
   return fromExceeds || toExceeds;
@@ -183,6 +197,8 @@ export async function executeTransaction(
     }
   }
 
+  io.to(`user:${userId}`).emit("transaction:completed", transaction);
+
   return transaction;
 }
 
@@ -265,7 +281,7 @@ export async function confirmTransaction(token: string) {
   } finally {
     client.release();
   }
-  
+
   const wallet = await findWalletById(transaction.wallet_id);
 
   if (wallet) {

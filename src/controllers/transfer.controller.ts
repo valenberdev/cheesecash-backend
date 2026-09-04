@@ -1,18 +1,28 @@
-import { Request, Response } from 'express';
-import { AuthRequest } from '../middlewares/auth.middleware';
-import { executeTransfer, confirmTransfer, getCombinedHistory } from '../services/transfer.service';
-import { formatAmount } from '../utils/formatAmount';
+import { Request, Response } from "express";
+import { AuthRequest } from "../middlewares/auth.middleware";
+import {
+  executeTransfer,
+  confirmTransfer,
+  getCombinedHistory,
+} from "../services/transfer.service";
+import { formatAmount } from "../utils/formatAmount";
 
 export async function createTransferEndpoint(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: 'No autenticado' });
+      res.status(401).json({ error: "No autenticado" });
       return;
     }
 
-    const { toEmail, currency, amount } = req.body;
+    const { toEmail, toPin, currency, amount } = req.body;
 
-    const transfer = await executeTransfer(req.userId, toEmail, currency, amount);
+    const transfer = await executeTransfer(
+      req.userId,
+      toEmail,
+      toPin,
+      currency,
+      amount,
+    );
 
     res.status(201).json({
       ...transfer,
@@ -41,7 +51,7 @@ export async function confirmTransferEndpoint(req: Request, res: Response) {
 export async function getFullHistory(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: 'No autenticado' });
+      res.status(401).json({ error: "No autenticado" });
       return;
     }
 

@@ -7,6 +7,7 @@ import {
   setResetToken,
   findUserByResetToken,
   resetPassword,
+  generateUniquePin,
 } from "../repositories/user.repository";
 import { createInitialBalances } from "../repositories/balance.repository";
 import { createWallet } from "../repositories/wallet.repository";
@@ -51,7 +52,16 @@ export async function registerUser(
   try {
     await client.query("BEGIN");
 
-    newUser = await createUser(client, email, passwordHash, fullName, birthDate);
+    const userPin = await generateUniquePin();
+
+    newUser = await createUser(
+      client,
+      email,
+      passwordHash,
+      fullName,
+      birthDate,
+      userPin,
+    );
 
     const wallet = await createWallet(client, newUser.id);
 
