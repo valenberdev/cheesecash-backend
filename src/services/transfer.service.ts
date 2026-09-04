@@ -19,6 +19,7 @@ import crypto from "crypto";
 import { sendEmail } from "./email.service";
 import { findTransactionsByWalletId } from "../repositories/transaction.repository";
 import { findUserByPin } from "../repositories/user.repository";
+import { io } from "../config/socket";
 
 export async function executeTransfer(
   fromUserId: number,
@@ -141,6 +142,9 @@ export async function executeTransfer(
   } finally {
     client.release();
   }
+
+  io.to(`user:${fromUserId}`).emit("transfer:completed", transfer);
+  io.to(`user:${toUser.id}`).emit("transfer:completed", transfer);
 
   return transfer;
 }
