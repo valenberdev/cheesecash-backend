@@ -9,6 +9,10 @@ interface CoinGeckoResponse {
 
 let btcPriceCache: { price: number; fetchedAt: number } | null = null;
 
+export function resetBtcPriceCache(): void {
+  btcPriceCache = null;
+}
+
 export async function getBtcPriceInUsd(): Promise<number> {
   const now = Date.now();
 

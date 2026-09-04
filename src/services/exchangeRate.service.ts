@@ -10,6 +10,10 @@ interface ExchangeRateResponse {
 
 let fiatRatesCache: { rates: Record<string, number>; fetchedAt: number } | null = null;
 
+export function resetFiatRatesCache(): void {
+  fiatRatesCache = null;
+}
+
 export async function getFiatRates(): Promise<Record<string, number>> {
   const now = Date.now();
 
