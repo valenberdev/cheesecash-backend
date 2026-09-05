@@ -1,4 +1,5 @@
 import { getBtcPriceInUsd } from './coingecko.service';
+import { getDolarOficialCompra } from './dolarApi.service';
 
 const EXCHANGE_RATE_API_URL = 'https://v6.exchangerate-api.com/v6';
 const FIAT_CACHE_DURATION_MS = 60 * 60 * 1000; 
@@ -46,6 +47,20 @@ const FIAT_CURRENCIES = ['ARS', 'USD', 'EUR'];
 export async function getExchangeRate(fromCurrency: string, toCurrency: string): Promise<number> {
   if (fromCurrency === toCurrency) {
     return 1;
+  }
+
+  const isArsUsdPair =
+    (fromCurrency === 'ARS' && toCurrency === 'USD') ||
+    (fromCurrency === 'USD' && toCurrency === 'ARS');
+
+  if (isArsUsdPair) {
+    const dolarOficial = await getDolarOficialCompra();
+
+    if (fromCurrency === 'ARS') {
+      return 1 / dolarOficial;
+    }
+
+    return dolarOficial;
   }
 
   const fiatRates = await getFiatRates();
