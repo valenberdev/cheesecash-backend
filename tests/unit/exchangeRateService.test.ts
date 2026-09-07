@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getFiatRates, getExchangeRate, resetFiatRatesCache } from '../../src/services/exchangeRate.service';
 import * as coingeckoService from '../../src/services/coingecko.service';
+import * as dolarApiService from '../../src/services/dolarApi.service';
 
 vi.mock('../../src/services/coingecko.service', () => ({
   getBtcPriceInUsd: vi.fn(),
+}));
+
+vi.mock('../../src/services/dolarApi.service', () => ({
+  getDolarOficialCompra: vi.fn(),
 }));
 
 describe('getFiatRates', () => {
@@ -44,6 +49,7 @@ describe('getExchangeRate', () => {
     resetFiatRatesCache();
     vi.stubGlobal('fetch', vi.fn());
     vi.mocked(coingeckoService.getBtcPriceInUsd).mockReset();
+    vi.mocked(dolarApiService.getDolarOficialCompra).mockReset();
   });
 
   it('devuelve 1 cuando ambas monedas son iguales', async () => {
@@ -58,9 +64,27 @@ describe('getExchangeRate', () => {
       json: async () => ({ result: 'success', conversion_rates: { ARS: 1450, EUR: 0.92 } }),
     });
 
+    const rate = await getExchangeRate('USD', 'EUR');
+
+    expect(rate).toBe(0.92);
+  });
+
+  it('usa el dolar oficial de compra para el par USD-ARS, no la API de fiat', async () => {
+    vi.mocked(dolarApiService.getDolarOficialCompra).mockResolvedValue(1450);
+
     const rate = await getExchangeRate('USD', 'ARS');
 
     expect(rate).toBe(1450);
+    expect(dolarApiService.getDolarOficialCompra).toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('invierte la cotizacion para el par ARS-USD', async () => {
+    vi.mocked(dolarApiService.getDolarOficialCompra).mockResolvedValue(1000);
+
+    const rate = await getExchangeRate('ARS', 'USD');
+
+    expect(rate).toBe(0.001);
   });
 
   it('calcula la tasa de BTC a fiat', async () => {
