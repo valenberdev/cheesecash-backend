@@ -77,6 +77,8 @@ npm run dev
 
 Server en `http://localhost:3000`. Confirmá con `GET /health` → `{"status":"ok"}`.
 
+Documentación interactiva (Swagger): `http://localhost:3000/api-docs`
+
 ### Build y producción
 
 ```bash
