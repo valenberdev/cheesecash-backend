@@ -20,6 +20,7 @@ import { sendEmail } from "./email.service";
 import { findTransactionsByWalletId } from "../repositories/transaction.repository";
 import { findUserByPin } from "../repositories/user.repository";
 import { io } from "../config/socket";
+import { NotFoundError, ValidationError, UnauthorizedError } from '../utils/errors';
 
 export async function executeTransfer(
   fromUserId: number,
@@ -29,13 +30,13 @@ export async function executeTransfer(
   amount: number,
 ) {
   if (amount <= 0) {
-    throw new Error("El monto debe ser mayor a cero");
+    throw new ValidationError('El monto debe ser mayor a cero');
   }
 
   const fromWallet = await findWalletByUserId(fromUserId);
 
   if (!fromWallet) {
-    throw new Error("Wallet no encontrada");
+    throw new NotFoundError('Wallet no encontrada');
   }
 
   let toUser;
@@ -45,28 +46,28 @@ export async function executeTransfer(
   } else if (toPin) {
     toUser = await findUserByPin(toPin);
   } else {
-    throw new Error("Tenés que indicar un email o un PIN de destinatario");
+    throw new ValidationError('Tenés que indicar un email o un PIN de destinatario');
   }
 
   if (!toUser) {
-    throw new Error("El destinatario no existe");
+    throw new NotFoundError('El destinatario no existe');
   }
 
   const toWallet = await findWalletByUserId(toUser.id);
 
   if (!toWallet) {
-    throw new Error("El destinatario no tiene wallet");
+    throw new NotFoundError('El destinatario no tiene wallet');
   }
 
   if (fromWallet.id === toWallet.id) {
-    throw new Error("No podés transferirte a vos mismo");
+    throw new ValidationError('No podés transferirte a vos mismo');
   }
 
   const balances = await findBalancesByWalletId(fromWallet.id);
   const fromBalance = balances.find((b) => b.currency === currency);
 
   if (!fromBalance || parseFloat(fromBalance.amount) < amount) {
-    throw new Error("Saldo insuficiente");
+    throw new ValidationError('Saldo insuficiente');
   }
 
   const isHighValue = await isHighValueTransaction(
@@ -153,16 +154,16 @@ export async function confirmTransfer(token: string) {
   const transfer = await findTransferByConfirmationToken(token);
 
   if (!transfer) {
-    throw new Error("Token de confirmación inválido");
+    throw new UnauthorizedError('Token de confirmación inválido');
   }
 
   if (transfer.status !== "pending") {
-    throw new Error("Esta transferencia ya fue procesada");
+    throw new ValidationError('Esta transferencia ya fue procesada');
   }
 
   if (!transfer.expires_at || new Date(transfer.expires_at) < new Date()) {
     await failPendingTransfer(transfer.id);
-    throw new Error("El link de confirmación expiró");
+    throw new UnauthorizedError('El link de confirmación expiró');
   }
 
   const client = await pool.connect();
@@ -178,7 +179,7 @@ export async function confirmTransfer(token: string) {
     const amountNum = parseFloat(transfer.amount);
 
     if (!fromBalance || parseFloat(fromBalance.amount) < amountNum) {
-      throw new Error("Saldo insuficiente para confirmar la transferencia");
+      throw new UnauthorizedError('Saldo insuficiente para confirmar la transferencia');
     }
 
     await adjustBalance(

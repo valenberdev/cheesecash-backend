@@ -24,6 +24,11 @@ import {
 import { sendTransactionReceiptEmail, sendEmail } from "./email.service";
 import crypto from "crypto";
 import { io } from "../config/socket";
+import {
+  NotFoundError,
+  ValidationError,
+  UnauthorizedError,
+} from "../utils/errors";
 
 async function exceedsThreshold(
   thresholds: {
@@ -78,7 +83,7 @@ export async function executeTransaction(
   const wallet = await findWalletByUserId(userId);
 
   if (!wallet) {
-    throw new Error("Wallet no encontrada");
+    throw new NotFoundError("Wallet no encontrada");
   }
 
   const rate = await getExchangeRate(fromCurrency, toCurrency);
@@ -92,7 +97,7 @@ export async function executeTransaction(
   };
 
   if (toAmount < MIN_RESULT_AMOUNT[toCurrency]) {
-    throw new Error("El monto es demasiado bajo para esta operación");
+    throw new ValidationError("El monto es demasiado bajo para esta operación");
   }
 
   const balances = await findBalancesByWalletId(wallet.id);
@@ -103,7 +108,7 @@ export async function executeTransaction(
     fromAmount <= 0 ||
     parseFloat(fromBalance.amount) < fromAmount
   ) {
-    throw new Error("Saldo insuficiente");
+    throw new ValidationError("Saldo insuficiente");
   }
 
   const isHighValue = await isHighValueTransaction(
@@ -162,7 +167,7 @@ export async function executeTransaction(
       fromAmount <= 0 ||
       parseFloat(fromBalance.amount) < fromAmount
     ) {
-      throw new Error("Saldo insuficiente");
+      throw new ValidationError("Saldo insuficiente");
     }
 
     await adjustBalance(client, wallet.id, fromCurrency, -fromAmount);
@@ -218,11 +223,11 @@ export async function confirmTransaction(token: string) {
   const transaction = await findTransactionByConfirmationToken(token);
 
   if (!transaction) {
-    throw new Error("Token de confirmación inválido");
+    throw new UnauthorizedError("Token de confirmación inválido");
   }
 
   if (transaction.status !== "pending") {
-    throw new Error("Esta transacción ya fue procesada");
+    throw new ValidationError("Esta transacción ya fue procesada");
   }
 
   if (
@@ -230,7 +235,7 @@ export async function confirmTransaction(token: string) {
     new Date(transaction.expires_at) < new Date()
   ) {
     await failPendingTransaction(transaction.id);
-    throw new Error("El link de confirmación expiró");
+    throw new UnauthorizedError("El link de confirmación expiró");
   }
 
   const client = await pool.connect();
@@ -248,7 +253,9 @@ export async function confirmTransaction(token: string) {
     const fromAmountNum = parseFloat(transaction.from_amount);
 
     if (!fromBalance || parseFloat(fromBalance.amount) < fromAmountNum) {
-      throw new Error("Saldo insuficiente para confirmar la operación");
+      throw new UnauthorizedError(
+        "Saldo insuficiente para confirmar la operación",
+      );
     }
 
     await adjustBalance(

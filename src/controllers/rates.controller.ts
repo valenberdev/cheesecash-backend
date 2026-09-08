@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
-import { getExchangeRate, getAllRates } from "../services/exchangeRate.service";
+import { Request, Response, NextFunction } from 'express';
+import { getExchangeRate, getAllRates } from '../services/exchangeRate.service';
 
-export async function getRates(req: Request, res: Response) {
+export async function getRates(req: Request, res: Response, next: NextFunction) {
   try {
     const { from, to } = req.query;
 
@@ -14,6 +14,6 @@ export async function getRates(req: Request, res: Response) {
     const rates = await getAllRates();
     res.status(200).json(rates);
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    next(error);
   }
 }

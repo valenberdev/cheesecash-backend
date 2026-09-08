@@ -1,5 +1,5 @@
-import { Response } from "express";
-import { AuthRequest } from "../middlewares/auth.middleware";
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../middlewares/auth.middleware';
 import {
   getUserProfile,
   updateUserProfile,
@@ -7,28 +7,27 @@ import {
   getMyThresholds,
   updateMyThresholds,
   getMyPin,
-} from "../services/user.service";
+} from '../services/user.service';
+import { UnauthorizedError } from '../utils/errors';
 
-export async function getMe(req: AuthRequest, res: Response) {
+export async function getMe(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const profile = await getUserProfile(req.userId);
 
     res.status(200).json(profile);
   } catch (error) {
-    res.status(404).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function updateMe(req: AuthRequest, res: Response) {
+export async function updateMe(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const { fullName } = req.body;
@@ -36,70 +35,66 @@ export async function updateMe(req: AuthRequest, res: Response) {
 
     res.status(200).json(updatedUser);
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function changeMyPassword(req: AuthRequest, res: Response) {
+export async function changeMyPassword(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const { currentPassword, newPassword } = req.body;
 
     await changePassword(req.userId, currentPassword, newPassword);
 
-    res.status(200).json({ message: "Contraseña actualizada correctamente" });
+    res.status(200).json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function getThresholds(req: AuthRequest, res: Response) {
+export async function getThresholds(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const thresholds = await getMyThresholds(req.userId);
 
     res.status(200).json(thresholds);
   } catch (error) {
-    res.status(404).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function updateThresholds(req: AuthRequest, res: Response) {
+export async function updateThresholds(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const { ars, usd, eur, btcUsd } = req.body;
 
     await updateMyThresholds(req.userId, ars, usd, eur, btcUsd);
 
-    res.status(200).json({ message: "Umbrales actualizados correctamente" });
+    res.status(200).json({ message: 'Umbrales actualizados correctamente' });
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function getPin(req: AuthRequest, res: Response) {
+export async function getPin(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const pin = await getMyPin(req.userId);
 
     res.status(200).json({ pin });
   } catch (error) {
-    res.status(404).json({ error: (error as Error).message });
+    next(error);
   }
 }

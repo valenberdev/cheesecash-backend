@@ -1,13 +1,13 @@
-import { Response } from "express";
-import { AuthRequest } from "../middlewares/auth.middleware";
-import { getWalletBalances } from "../services/wallet.service";
-import { formatAmount } from "../utils/formatAmount";
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { getWalletBalances } from '../services/wallet.service';
+import { formatAmount } from '../utils/formatAmount';
+import { UnauthorizedError } from '../utils/errors';
 
-export async function getBalances(req: AuthRequest, res: Response) {
+export async function getBalances(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: 'No autenticado' });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const balances = await getWalletBalances(req.userId);
@@ -19,6 +19,6 @@ export async function getBalances(req: AuthRequest, res: Response) {
 
     res.status(200).json(formatted);
   } catch (error) {
-    res.status(404).json({ error: (error as Error).message });
+    next(error);
   }
 }
