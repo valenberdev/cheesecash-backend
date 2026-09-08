@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import routes from "./routes";
 import helmet from "helmet";
+import { errorHandler } from "./middlewares/error.middleware";
 
 const app = express();
 const allowedOrigins = [
@@ -21,5 +22,6 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api", routes);
+app.use(errorHandler);
 
 export default app;

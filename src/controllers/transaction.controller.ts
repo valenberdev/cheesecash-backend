@@ -1,13 +1,13 @@
-import { Response, Request } from "express";
-import { AuthRequest } from "../middlewares/auth.middleware";
-import { executeTransaction, getTransactionHistory, confirmTransaction } from "../services/transaction.service";
-import { formatAmount } from "../utils/formatAmount";
+import { Request, Response, NextFunction } from 'express';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { executeTransaction, getTransactionHistory, confirmTransaction } from '../services/transaction.service';
+import { formatAmount } from '../utils/formatAmount';
+import { UnauthorizedError } from '../utils/errors';
 
-export async function createTransactionEndpoint(req: AuthRequest, res: Response) {
+export async function createTransactionEndpoint(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: 'No autenticado' });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const { type, fromCurrency, toCurrency, fromAmount } = req.body;
@@ -26,15 +26,14 @@ export async function createTransactionEndpoint(req: AuthRequest, res: Response)
       to_amount: formatAmount(transaction.to_amount, transaction.to_currency),
     });
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function getHistory(req: AuthRequest, res: Response) {
+export async function getHistory(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: 'No autenticado' });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const history = await getTransactionHistory(req.userId);
@@ -47,11 +46,11 @@ export async function getHistory(req: AuthRequest, res: Response) {
 
     res.status(200).json(formatted);
   } catch (error) {
-    res.status(404).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function confirmTransactionEndpoint(req: Request, res: Response) {
+export async function confirmTransactionEndpoint(req: Request, res: Response, next: NextFunction) {
   try {
     const token = req.params.token as string;
 
@@ -63,6 +62,6 @@ export async function confirmTransactionEndpoint(req: Request, res: Response) {
       to_amount: formatAmount(transaction.to_amount, transaction.to_currency),
     });
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    next(error);
   }
 }

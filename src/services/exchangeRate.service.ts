@@ -1,15 +1,18 @@
-import { getBtcPriceInUsd } from './coingecko.service';
-import { getDolarOficialCompra } from './dolarApi.service';
+import { getBtcPriceInUsd } from "./coingecko.service";
+import { getDolarOficialCompra } from "./dolarApi.service";
 
-const EXCHANGE_RATE_API_URL = 'https://v6.exchangerate-api.com/v6';
-const FIAT_CACHE_DURATION_MS = 60 * 60 * 1000; 
+const EXCHANGE_RATE_API_URL = "https://v6.exchangerate-api.com/v6";
+const FIAT_CACHE_DURATION_MS = 60 * 60 * 1000;
 
 interface ExchangeRateResponse {
   result: string;
   conversion_rates: Record<string, number>;
 }
 
-let fiatRatesCache: { rates: Record<string, number>; fetchedAt: number } | null = null;
+let fiatRatesCache: {
+  rates: Record<string, number>;
+  fetchedAt: number;
+} | null = null;
 
 export function resetFiatRatesCache(): void {
   fiatRatesCache = null;
@@ -18,7 +21,10 @@ export function resetFiatRatesCache(): void {
 export async function getFiatRates(): Promise<Record<string, number>> {
   const now = Date.now();
 
-  if (fiatRatesCache && now - fiatRatesCache.fetchedAt < FIAT_CACHE_DURATION_MS) {
+  if (
+    fiatRatesCache &&
+    now - fiatRatesCache.fetchedAt < FIAT_CACHE_DURATION_MS
+  ) {
     return fiatRatesCache.rates;
   }
 
@@ -27,13 +33,13 @@ export async function getFiatRates(): Promise<Record<string, number>> {
   const response = await fetch(`${EXCHANGE_RATE_API_URL}/${apiKey}/latest/USD`);
 
   if (!response.ok) {
-    throw new Error('No se pudo obtener las tasas de cambio');
+    throw new Error("No se pudo obtener las tasas de cambio");
   }
 
   const data: ExchangeRateResponse = await response.json();
 
-  if (data.result !== 'success') {
-    throw new Error('Error en la respuesta de ExchangeRate-API');
+  if (data.result !== "success") {
+    throw new Error("Error en la respuesta de ExchangeRate-API");
   }
 
   fiatRatesCache = { rates: data.conversion_rates, fetchedAt: now };
@@ -41,22 +47,24 @@ export async function getFiatRates(): Promise<Record<string, number>> {
   return data.conversion_rates;
 }
 
+const FIAT_CURRENCIES = ["ARS", "USD", "EUR"];
 
-const FIAT_CURRENCIES = ['ARS', 'USD', 'EUR'];
-
-export async function getExchangeRate(fromCurrency: string, toCurrency: string): Promise<number> {
+export async function getExchangeRate(
+  fromCurrency: string,
+  toCurrency: string,
+): Promise<number> {
   if (fromCurrency === toCurrency) {
     return 1;
   }
 
   const isArsUsdPair =
-    (fromCurrency === 'ARS' && toCurrency === 'USD') ||
-    (fromCurrency === 'USD' && toCurrency === 'ARS');
+    (fromCurrency === "ARS" && toCurrency === "USD") ||
+    (fromCurrency === "USD" && toCurrency === "ARS");
 
   if (isArsUsdPair) {
     const dolarOficial = await getDolarOficialCompra();
 
-    if (fromCurrency === 'ARS') {
+    if (fromCurrency === "ARS") {
       return 1 / dolarOficial;
     }
 
@@ -66,8 +74,8 @@ export async function getExchangeRate(fromCurrency: string, toCurrency: string):
   const fiatRates = await getFiatRates();
   const rates: Record<string, number> = { ...fiatRates, USD: 1 };
 
-  const fromIsBtc = fromCurrency === 'BTC';
-  const toIsBtc = toCurrency === 'BTC';
+  const fromIsBtc = fromCurrency === "BTC";
+  const toIsBtc = toCurrency === "BTC";
 
   if (!fromIsBtc && !toIsBtc) {
     const fromRateToUsd = rates[fromCurrency];
@@ -79,17 +87,16 @@ export async function getExchangeRate(fromCurrency: string, toCurrency: string):
   const btcPriceInUsd = await getBtcPriceInUsd();
 
   if (fromIsBtc && !toIsBtc) {
-    return btcPriceInUsd * rates[toCurrency];
+    const usdToTargetRate = await getExchangeRate("USD", toCurrency);
+    return btcPriceInUsd * usdToTargetRate;
   }
 
   if (!fromIsBtc && toIsBtc) {
-    const fromRateToUsd = rates[fromCurrency];
-    const amountInUsd = 1 / fromRateToUsd;
-
-    return amountInUsd / btcPriceInUsd;
+    const fromToUsdRate = await getExchangeRate(fromCurrency, "USD");
+    return fromToUsdRate / btcPriceInUsd;
   }
 
-  throw new Error('Combinación de monedas no soportada');
+  throw new Error("Combinación de monedas no soportada");
 }
 
 export async function getAllRates(): Promise<Record<string, number>> {

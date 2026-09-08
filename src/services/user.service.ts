@@ -10,19 +10,14 @@ import {
   setUserPin,
   generateUniquePin,
 } from "../repositories/user.repository";
-import {
-  findUserByGoogleId,
-  linkGoogleAccount,
-  createGoogleUser,
-} from "../repositories/user.repository";
-import { OAuth2Client } from "google-auth-library";
 import { validatePasswordLength } from "./auth.service";
+import { NotFoundError, UnauthorizedError } from "../utils/errors";
 
 export async function getUserProfile(userId: number) {
   const user = await findUserById(userId);
 
   if (!user) {
-    throw new Error("Usuario no encontrado");
+    throw new NotFoundError("Usuario no encontrado");
   }
 
   return user;
@@ -42,7 +37,7 @@ export async function changePassword(
   const user = await findUserByIdWithPassword(userId);
 
   if (!user) {
-    throw new Error("Usuario no encontrado");
+    throw new NotFoundError("Usuario no encontrado");
   }
 
   const passwordMatches = await bcrypt.compare(
@@ -51,7 +46,7 @@ export async function changePassword(
   );
 
   if (!passwordMatches) {
-    throw new Error("Contraseña actual incorrecta");
+    throw new UnauthorizedError("Contraseña actual incorrecta");
   }
 
   validatePasswordLength(newPassword);
@@ -65,7 +60,7 @@ export async function getMyThresholds(userId: number) {
   const thresholds = await getUserThresholds(userId);
 
   if (!thresholds) {
-    throw new Error("Usuario no encontrado");
+    throw new NotFoundError("Usuario no encontrado");
   }
 
   return thresholds;

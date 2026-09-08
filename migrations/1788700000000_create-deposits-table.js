@@ -17,10 +17,6 @@ exports.up = (pgm) => {
       notNull: true,
       check: 'amount > 0',
     },
-    // Identificador del origen del depósito. En modo demo lo genera el
-    // servidor; cuando entre una pasarela real será el id del pago.
-    // La restricción de unicidad es lo que impide acreditar dos veces
-    // el mismo depósito si el pedido se repite.
     reference: {
       type: 'varchar(80)',
       notNull: true,

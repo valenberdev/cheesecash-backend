@@ -1,13 +1,13 @@
-import { Response } from "express";
-import { AuthRequest } from "../middlewares/auth.middleware";
-import { executeDeposit, getMyDeposits } from "../services/deposit.service";
-import { formatAmount } from "../utils/formatAmount";
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { executeDeposit, getMyDeposits } from '../services/deposit.service';
+import { formatAmount } from '../utils/formatAmount';
+import { UnauthorizedError } from '../utils/errors';
 
-export async function createDepositEndpoint(req: AuthRequest, res: Response) {
+export async function createDepositEndpoint(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const { currency, amount, reference } = req.body;
@@ -19,15 +19,14 @@ export async function createDepositEndpoint(req: AuthRequest, res: Response) {
       amount: formatAmount(deposit.amount, deposit.currency),
     });
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    next(error);
   }
 }
 
-export async function getDepositsEndpoint(req: AuthRequest, res: Response) {
+export async function getDepositsEndpoint(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      res.status(401).json({ error: "No autenticado" });
-      return;
+      throw new UnauthorizedError('No autenticado');
     }
 
     const deposits = await getMyDeposits(req.userId);
@@ -39,6 +38,6 @@ export async function getDepositsEndpoint(req: AuthRequest, res: Response) {
       })),
     );
   } catch (error) {
-    res.status(404).json({ error: (error as Error).message });
+    next(error);
   }
 }

@@ -8,11 +8,8 @@ import {
   findDepositByReference,
   findDepositsByWalletId,
 } from "../repositories/deposit.repository";
+import { ValidationError, NotFoundError } from '../utils/errors';
 
-/**
- * Tope por operación, por moneda. Sin esto un usuario podría acreditarse
- * cualquier cifra y las estadísticas de la demo pierden sentido.
- */
 const MAX_DEPOSIT: Record<string, number> = {
   ARS: 5_000_000,
   USD: 5_000,
@@ -27,24 +24,22 @@ export async function executeDeposit(
   reference?: string,
 ) {
   if (amount <= 0) {
-    throw new Error("El monto debe ser mayor a cero");
+    throw new ValidationError("El monto debe ser mayor a cero");
   }
 
   const max = MAX_DEPOSIT[currency];
 
   if (max !== undefined && amount > max) {
-    throw new Error(`El máximo por operación es ${max} ${currency}`);
+    throw new ValidationError(`El máximo por operación es ${max} ${currency}`);
   }
 
   const wallet = await findWalletByUserId(userId);
 
   if (!wallet) {
-    throw new Error("Wallet no encontrada");
+    throw new NotFoundError("Wallet no encontrada");
   }
 
-  // Idempotencia: si ya acreditamos un depósito con esta referencia,
-  // devolvemos el original en vez de sumar de nuevo. Con una pasarela real
-  // el webhook puede repetirse, y acreditar dos veces sería crear dinero.
+  
   const ref = reference ?? randomUUID();
   const existing = await findDepositByReference(ref);
 
