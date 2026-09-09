@@ -17,6 +17,11 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(8, 'La nueva contraseña debe tener al menos 8 caracteres'),
 });
 
+export const updateProfileSchema = z.object({
+  fullName: z.string().min(1, 'El nombre no puede estar vacío').max(100, 'El nombre es demasiado largo'),
+  baseCurrency: z.enum(['ARS', 'USD', 'EUR']),
+});
+
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'El token es requerido'),
   newPassword: z.string().min(8, 'La nueva contraseña debe tener al menos 8 caracteres'),
