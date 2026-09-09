@@ -1,6 +1,9 @@
 import { pool } from "../config/db";
 import { findUserByEmail, findUserById } from "../repositories/user.repository";
-import { findWalletByUserId } from "../repositories/wallet.repository";
+import {
+  findWalletByUserId,
+  findWalletById,
+} from "../repositories/wallet.repository";
 import {
   findBalancesByWalletId,
   findBalancesByWalletIdForUpdate,
@@ -20,7 +23,11 @@ import { sendEmail } from "./email.service";
 import { findTransactionsByWalletId } from "../repositories/transaction.repository";
 import { findUserByPin } from "../repositories/user.repository";
 import { io } from "../config/socket";
-import { NotFoundError, ValidationError, UnauthorizedError } from '../utils/errors';
+import {
+  NotFoundError,
+  ValidationError,
+  UnauthorizedError,
+} from "../utils/errors";
 
 export async function executeTransfer(
   fromUserId: number,
@@ -30,13 +37,13 @@ export async function executeTransfer(
   amount: number,
 ) {
   if (amount <= 0) {
-    throw new ValidationError('El monto debe ser mayor a cero');
+    throw new ValidationError("El monto debe ser mayor a cero");
   }
 
   const fromWallet = await findWalletByUserId(fromUserId);
 
   if (!fromWallet) {
-    throw new NotFoundError('Wallet no encontrada');
+    throw new NotFoundError("Wallet no encontrada");
   }
 
   let toUser;
@@ -46,28 +53,30 @@ export async function executeTransfer(
   } else if (toPin) {
     toUser = await findUserByPin(toPin);
   } else {
-    throw new ValidationError('Tenés que indicar un email o un PIN de destinatario');
+    throw new ValidationError(
+      "Tenés que indicar un email o un PIN de destinatario",
+    );
   }
 
   if (!toUser) {
-    throw new NotFoundError('El destinatario no existe');
+    throw new NotFoundError("El destinatario no existe");
   }
 
   const toWallet = await findWalletByUserId(toUser.id);
 
   if (!toWallet) {
-    throw new NotFoundError('El destinatario no tiene wallet');
+    throw new NotFoundError("El destinatario no tiene wallet");
   }
 
   if (fromWallet.id === toWallet.id) {
-    throw new ValidationError('No podés transferirte a vos mismo');
+    throw new ValidationError("No podés transferirte a vos mismo");
   }
 
   const balances = await findBalancesByWalletId(fromWallet.id);
   const fromBalance = balances.find((b) => b.currency === currency);
 
   if (!fromBalance || parseFloat(fromBalance.amount) < amount) {
-    throw new ValidationError('Saldo insuficiente');
+    throw new ValidationError("Saldo insuficiente");
   }
 
   const isHighValue = await isHighValueTransaction(
@@ -154,16 +163,16 @@ export async function confirmTransfer(token: string) {
   const transfer = await findTransferByConfirmationToken(token);
 
   if (!transfer) {
-    throw new UnauthorizedError('Token de confirmación inválido');
+    throw new UnauthorizedError("Token de confirmación inválido");
   }
 
   if (transfer.status !== "pending") {
-    throw new ValidationError('Esta transferencia ya fue procesada');
+    throw new ValidationError("Esta transferencia ya fue procesada");
   }
 
   if (!transfer.expires_at || new Date(transfer.expires_at) < new Date()) {
     await failPendingTransfer(transfer.id);
-    throw new UnauthorizedError('El link de confirmación expiró');
+    throw new UnauthorizedError("El link de confirmación expiró");
   }
 
   const client = await pool.connect();
@@ -179,7 +188,9 @@ export async function confirmTransfer(token: string) {
     const amountNum = parseFloat(transfer.amount);
 
     if (!fromBalance || parseFloat(fromBalance.amount) < amountNum) {
-      throw new UnauthorizedError('Saldo insuficiente para confirmar la transferencia');
+      throw new UnauthorizedError(
+        "Saldo insuficiente para confirmar la transferencia",
+      );
     }
 
     await adjustBalance(
@@ -225,7 +236,7 @@ export async function getCombinedHistory(userId: number) {
   const wallet = await findWalletByUserId(userId);
 
   if (!wallet) {
-    throw new Error("Wallet no encontrada");
+    throw new NotFoundError("Wallet no encontrada");
   }
 
   const transactions = await findTransactionsByWalletId(wallet.id);
@@ -238,13 +249,37 @@ export async function getCombinedHistory(userId: number) {
     detail: t,
   }));
 
-  const normalizedTransfers = transfers.map((t) => ({
-    kind: "transfer" as const,
-    id: t.id,
-    created_at: t.created_at,
-    direction: t.from_wallet_id === wallet.id ? "sent" : "received",
-    detail: t,
-  }));
+  const normalizedTransfers = await Promise.all(
+    transfers.map(async (t) => {
+      const direction = t.from_wallet_id === wallet.id ? "sent" : "received";
+      const counterpartWalletId =
+        direction === "sent" ? t.to_wallet_id : t.from_wallet_id;
+
+      const counterpartWallet = await findWalletById(counterpartWalletId);
+
+      let counterpart = null;
+
+      if (counterpartWallet) {
+        const counterpartUser = await findUserById(counterpartWallet.user_id);
+
+        if (counterpartUser) {
+          counterpart = {
+            full_name: counterpartUser.full_name,
+            email: counterpartUser.email,
+          };
+        }
+      }
+
+      return {
+        kind: "transfer" as const,
+        id: t.id,
+        created_at: t.created_at,
+        direction,
+        counterpart,
+        detail: t,
+      };
+    }),
+  );
 
   const combined = [...normalizedTransactions, ...normalizedTransfers];
 

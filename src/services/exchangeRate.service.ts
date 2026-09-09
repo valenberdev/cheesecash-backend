@@ -71,13 +71,13 @@ export async function getExchangeRate(
     return dolarOficial;
   }
 
-  const fiatRates = await getFiatRates();
-  const rates: Record<string, number> = { ...fiatRates, USD: 1 };
-
   const fromIsBtc = fromCurrency === "BTC";
   const toIsBtc = toCurrency === "BTC";
 
   if (!fromIsBtc && !toIsBtc) {
+    const fiatRates = await getFiatRates();
+    const rates: Record<string, number> = { ...fiatRates, USD: 1 };
+
     const fromRateToUsd = rates[fromCurrency];
     const toRateFromUsd = rates[toCurrency];
 

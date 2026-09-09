@@ -88,27 +88,21 @@ describe('getExchangeRate', () => {
   });
 
   it('calcula la tasa de BTC a fiat', async () => {
-    (globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ result: 'success', conversion_rates: { ARS: 1450 } }),
-    });
-    vi.mocked(coingeckoService.getBtcPriceInUsd).mockResolvedValueOnce(62000);
+  vi.mocked(dolarApiService.getDolarOficialCompra).mockResolvedValueOnce(1450);
+  vi.mocked(coingeckoService.getBtcPriceInUsd).mockResolvedValueOnce(62000);
 
-    const rate = await getExchangeRate('BTC', 'ARS');
+  const rate = await getExchangeRate('BTC', 'ARS');
 
-    expect(rate).toBe(62000 * 1450);
-  });
+  expect(rate).toBe(62000 * 1450);
+});
 
-  it('calcula la tasa de fiat a BTC', async () => {
-    (globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ result: 'success', conversion_rates: { ARS: 1450 } }),
-    });
-    vi.mocked(coingeckoService.getBtcPriceInUsd).mockResolvedValueOnce(62000);
+it('calcula la tasa de fiat a BTC', async () => {
+  vi.mocked(dolarApiService.getDolarOficialCompra).mockResolvedValueOnce(1450);
+  vi.mocked(coingeckoService.getBtcPriceInUsd).mockResolvedValueOnce(62000);
 
-    const rate = await getExchangeRate('ARS', 'BTC');
+  const rate = await getExchangeRate('ARS', 'BTC');
 
-    const expectedRate = (1 / 1450) / 62000;
-    expect(rate).toBeCloseTo(expectedRate, 15);
-  });
+  const expectedRate = (1 / 1450) / 62000;
+  expect(rate).toBeCloseTo(expectedRate, 15);
+});
 });
