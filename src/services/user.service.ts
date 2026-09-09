@@ -9,6 +9,7 @@ import {
   getUserPin,
   setUserPin,
   generateUniquePin,
+  findUserByPin,
 } from "../repositories/user.repository";
 import { validatePasswordLength } from "./auth.service";
 import { NotFoundError, UnauthorizedError } from "../utils/errors";
@@ -85,4 +86,14 @@ export async function getMyPin(userId: number) {
   }
 
   return pin;
+}
+
+export async function lookupUserByPin(pin: string) {
+  const user = await findUserByPin(pin);
+
+  if (!user) {
+    throw new NotFoundError('No se encontró ningún usuario con ese PIN');
+  }
+
+  return { fullName: user.full_name };
 }

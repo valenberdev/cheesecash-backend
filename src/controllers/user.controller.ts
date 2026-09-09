@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import {
   getUserProfile,
@@ -7,8 +7,10 @@ import {
   getMyThresholds,
   updateMyThresholds,
   getMyPin,
+  lookupUserByPin,
 } from '../services/user.service';
 import { UnauthorizedError } from '../utils/errors';
+import { ValidationError } from '../utils/errors';
 
 export async function getMe(req: AuthRequest, res: Response, next: NextFunction) {
   try {
@@ -94,6 +96,22 @@ export async function getPin(req: AuthRequest, res: Response, next: NextFunction
     const pin = await getMyPin(req.userId);
 
     res.status(200).json({ pin });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function lookupByPin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const pin = req.query.pin as string;
+
+    if (!pin) {
+      throw new ValidationError('El PIN es requerido');
+    }
+
+    const result = await lookupUserByPin(pin);
+
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }
