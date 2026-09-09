@@ -10,6 +10,7 @@ import {
   setUserPin,
   generateUniquePin,
   findUserByPin,
+  updateUserBaseCurrency,
 } from "../repositories/user.repository";
 import { validatePasswordLength } from "./auth.service";
 import { NotFoundError, UnauthorizedError } from "../utils/errors";
@@ -24,7 +25,8 @@ export async function getUserProfile(userId: number) {
   return user;
 }
 
-export async function updateUserProfile(userId: number, fullName: string) {
+export async function updateUserProfile(userId: number, fullName: string, baseCurrency: string) {
+  await updateUserBaseCurrency(userId, baseCurrency);
   const updatedUser = await updateUserFullName(userId, fullName);
 
   return updatedUser;

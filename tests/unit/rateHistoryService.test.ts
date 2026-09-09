@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getRateHistory, resetRateHistoryCache } from '../../src/services/rateHistory.service';
 
-/** Respuestas de las tres APIs externas, con la forma que documentan. */
 const frankfurter = {
   ok: true,
   json: async () => ({
@@ -32,8 +31,6 @@ const coingecko = {
 
 describe('getRateHistory', () => {
   beforeEach(() => {
-    // El servicio filtra por fecha relativa a hoy, así que congelamos el
-    // reloj para que las fechas de prueba caigan siempre dentro del rango.
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-03T12:00:00Z'));
     resetRateHistoryCache();
@@ -93,7 +90,6 @@ describe('getRateHistory', () => {
 
     const points = await getRateHistory('BTC', 'ARS', 7);
 
-    // 1 BTC = 60000 USD y 1 USD = 1000 ARS => 60.000.000 ARS
     expect(points[0].rate).toBeCloseTo(60_000_000);
     expect(points[1].rate).toBeCloseTo(62000 * 1200);
   });

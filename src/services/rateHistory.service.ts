@@ -1,18 +1,3 @@
-/**
- * Serie histórica de cotizaciones.
- *
- * La idea: para cada moneda armamos cuánto vale UNA unidad expresada en
- * dólares, día por día. Después la cotización de cualquier par sale de
- * dividir una serie por la otra:
- *
- *   1 FROM = usdPor[FROM] USD
- *   1 TO   = usdPor[TO]   USD
- *   => 1 FROM = usdPor[FROM] / usdPor[TO] TO
- *
- * Es la misma cuenta que hace getExchangeRate, pero sobre una serie en vez
- * de sobre un valor puntual.
- */
-
 const FRANKFURTER_URL = "https://api.frankfurter.app";
 const ARGENTINA_DATOS_URL =
   "https://api.argentinadatos.com/v1/cotizaciones/dolares/oficial";
@@ -29,7 +14,6 @@ export interface RatePoint {
   rate: number;
 }
 
-/** Fecha en formato YYYY-MM-DD, que es lo que usan las tres APIs. */
 function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -40,7 +24,6 @@ function daysAgo(days: number): Date {
   return d;
 }
 
-/** Cachés por fuente: las series históricas cambian una vez por día. */
 const cache = new Map<string, { value: Record<string, number>; fetchedAt: number }>();
 
 export function resetRateHistoryCache(): void {
@@ -63,7 +46,6 @@ async function cached(
   return value;
 }
 
-/** Euros por dólar, por día. Fuente: Frankfurter (datos del BCE). */
 async function getEurPerUsdSeries(days: number): Promise<Record<string, number>> {
   return cached(`eur:${days}`, async () => {
     const start = toISODate(daysAgo(days));
@@ -93,7 +75,6 @@ async function getEurPerUsdSeries(days: number): Promise<Record<string, number>>
   });
 }
 
-/** Pesos por dólar (oficial, compra), por día. Fuente: ArgentinaDatos. */
 async function getArsPerUsdSeries(days: number): Promise<Record<string, number>> {
   return cached(`ars:${days}`, async () => {
     const response = await fetch(ARGENTINA_DATOS_URL);
@@ -120,7 +101,6 @@ async function getArsPerUsdSeries(days: number): Promise<Record<string, number>>
   });
 }
 
-/** Precio de BTC en dólares, por día. Fuente: CoinGecko. */
 async function getBtcUsdSeries(days: number): Promise<Record<string, number>> {
   return cached(`btc:${days}`, async () => {
     const response = await fetch(
@@ -142,11 +122,7 @@ async function getBtcUsdSeries(days: number): Promise<Record<string, number>> {
   });
 }
 
-/**
- * Cuánto vale una unidad de la moneda, en dólares, por día.
- * El dólar vale siempre 1, así que su serie se completa con las fechas
- * que aporten las otras.
- */
+
 async function getUsdValueSeries(
   currency: string,
   days: number,
@@ -192,8 +168,6 @@ export async function getRateHistory(
   const fromSeries = await getUsdValueSeries(fromCurrency, days);
   const toSeries = await getUsdValueSeries(toCurrency, days);
 
-  // Las fechas útiles son las que existen en las dos series. El dólar no
-  // aporta fechas propias (vale 1 siempre), así que toma las de la otra.
   const dates =
     fromSeries && toSeries
       ? Object.keys(fromSeries).filter((d) => d in toSeries)

@@ -6,10 +6,11 @@ interface User {
   email: string;
   full_name: string;
   auth_provider: string;
+  base_currency: string;
   birth_date: Date | null;
+  user_pin: string | null;
   created_at: Date;
   updated_at: Date;
-  user_pin: string | null;
 }
 
 export async function findUserByEmail(email: string): Promise<User | null> {
@@ -64,7 +65,7 @@ export async function findUserByEmailWithPassword(
 
 export async function findUserById(id: number): Promise<User | null> {
   const result = await pool.query(
-    "SELECT id, email, full_name, auth_provider, created_at, updated_at FROM users WHERE id = $1",
+    "SELECT id, email, full_name, auth_provider, base_currency, created_at, updated_at FROM users WHERE id = $1",
     [id],
   );
 
@@ -81,7 +82,7 @@ export async function updateUserFullName(
 ): Promise<User> {
   const result = await pool.query(
     `UPDATE users SET full_name = $1, updated_at = current_timestamp WHERE id = $2
-     RETURNING id, email, full_name, auth_provider, created_at, updated_at`,
+     RETURNING id, email, full_name, auth_provider, base_currency, created_at, updated_at`,
     [fullName, id],
   );
 
@@ -270,4 +271,11 @@ export async function findUserByPin(pin: string): Promise<User | null> {
   }
 
   return result.rows[0];
+}
+
+export async function updateUserBaseCurrency(id: number, baseCurrency: string): Promise<void> {
+  await pool.query(
+    `UPDATE users SET base_currency = $1, updated_at = current_timestamp WHERE id = $2`,
+    [baseCurrency, id]
+  );
 }

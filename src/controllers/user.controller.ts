@@ -29,11 +29,11 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
 export async function updateMe(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {
-      throw new UnauthorizedError('No autenticado');
+      throw new UnauthorizedError("No autenticado");
     }
 
-    const { fullName } = req.body;
-    const updatedUser = await updateUserProfile(req.userId, fullName);
+    const { fullName, baseCurrency } = req.body;
+    const updatedUser = await updateUserProfile(req.userId, fullName, baseCurrency);
 
     res.status(200).json(updatedUser);
   } catch (error) {
