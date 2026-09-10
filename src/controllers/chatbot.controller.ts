@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { askGemini } from '../services/gemini.service';
 import { ValidationError } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 export async function sendMessage(req: Request, res: Response, next: NextFunction) {
   try {
@@ -14,7 +15,7 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
 
     res.status(200).json({ reply });
   } catch (error) {
-    console.error('Error en chatbot:', error);
+    logger.error('Error en chatbot:', error);
     next(error);
   }
 }

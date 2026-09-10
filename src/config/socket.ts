@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { createServer } from 'http';
 import jwt from 'jsonwebtoken';
 import app from '../app';
+import { logger } from '../utils/logger';
 
 const httpServer = createServer(app);
 
@@ -32,10 +33,10 @@ io.on('connection', (socket) => {
 
   socket.join(`user:${userId}`);
 
-  console.log(`Usuario ${userId} conectado por socket`);
+  logger.info(`Usuario ${userId} conectado por socket`);
 
   socket.on('disconnect', () => {
-    console.log(`Usuario ${userId} desconectado`);
+    logger.info(`Usuario ${userId} desconectado`);
   });
 });
 

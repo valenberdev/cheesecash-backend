@@ -1,4 +1,5 @@
 import { pool } from "../config/db";
+import { logger } from "../utils/logger";
 import { getExchangeRate } from "./exchangeRate.service";
 import {
   findWalletByUserId,
@@ -198,7 +199,7 @@ export async function executeTransaction(
     try {
       await sendTransactionReceiptEmail(user.email, transaction);
     } catch (emailError) {
-      console.error("No se pudo enviar el comprobante:", emailError);
+      logger.error("No se pudo enviar el comprobante:", emailError);
     }
   }
 
@@ -298,7 +299,7 @@ export async function confirmTransaction(token: string) {
       try {
         await sendTransactionReceiptEmail(user.email, transaction);
       } catch (emailError) {
-        console.error("No se pudo enviar el comprobante:", emailError);
+        logger.error("No se pudo enviar el comprobante:", emailError);
       }
     }
   }
