@@ -18,6 +18,7 @@ import {
 } from "../repositories/user.repository";
 import { OAuth2Client } from "google-auth-library";
 import crypto from "crypto";
+import { logger } from "../utils/logger";
 import { sendEmail } from "./email.service";
 import { pool } from "../config/db";
 import { ValidationError, UnauthorizedError } from "../utils/errors";
@@ -184,7 +185,7 @@ export async function requestPasswordReset(email: string) {
        <p><a href="${resetLink}">Restablecer contraseña</a></p>`,
     );
   } catch (emailError) {
-    console.error("No se pudo enviar el mail de reseteo:", emailError);
+    logger.error("No se pudo enviar el mail de reseteo:", emailError);
   }
 }
 

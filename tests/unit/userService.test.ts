@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../src/repositories/user.repository", () => ({
+vi.mock('../../src/repositories/user.repository', () => ({
   findUserById: vi.fn(),
   updateUserFullName: vi.fn(),
   findUserByIdWithPassword: vi.fn(),
@@ -10,6 +10,7 @@ vi.mock("../../src/repositories/user.repository", () => ({
   getUserPin: vi.fn(),
   setUserPin: vi.fn(),
   generateUniquePin: vi.fn(),
+  updateUserBaseCurrency: vi.fn(),
 }));
 
 vi.mock("bcryptjs", () => ({
@@ -63,17 +64,14 @@ describe("getUserProfile", () => {
 });
 
 describe("updateUserProfile", () => {
-  it("actualiza el nombre completo", async () => {
-    (updateUserFullName as any).mockResolvedValueOnce({
-      id: 1,
-      full_name: "Nombre Nuevo",
-    });
+  it('actualiza el nombre completo', async () => {
+  (updateUserFullName as any).mockResolvedValueOnce({ id: 1, full_name: 'Nombre Nuevo' });
 
-    const result = await updateUserProfile(1, "Nombre Nuevo");
+  const result = await updateUserProfile(1, 'Nombre Nuevo', 'ARS');
 
-    expect(result.full_name).toBe("Nombre Nuevo");
-    expect(updateUserFullName).toHaveBeenCalledWith(1, "Nombre Nuevo");
-  });
+  expect(result.full_name).toBe('Nombre Nuevo');
+  expect(updateUserFullName).toHaveBeenCalledWith(1, 'Nombre Nuevo');
+});
 });
 
 describe("changePassword", () => {

@@ -10,13 +10,13 @@ import {
 } from "../controllers/user.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
-import { changePasswordSchema } from "../schemas/auth.schema";
+import { changePasswordSchema, updateProfileSchema } from "../schemas/auth.schema";
 import { lookupRateLimit } from "../middlewares/rateLimit.middleware";
 
 const router = Router();
 
 router.get("/me", requireAuth, getMe);
-router.put("/me", requireAuth, updateMe);
+router.put("/me", validate(updateProfileSchema), requireAuth, updateMe);
 router.get("/me/pin", requireAuth, getPin);
 router.get('/lookup', requireAuth, lookupRateLimit, lookupByPin);
 router.put("/me/password", validate(changePasswordSchema), requireAuth, changeMyPassword);
