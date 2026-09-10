@@ -162,9 +162,21 @@ export async function executeTransfer(
   }
 
   io.to(`user:${fromUserId}`).emit("transfer:completed", transfer);
-  io.to(`user:${toUser.id}`).emit("transfer:completed", transfer);
+io.to(`user:${toUser.id}`).emit("transfer:completed", transfer);
 
-  return transfer;
+if (fromUser) {
+  try {
+    await sendEmail(
+      fromUser.email,
+      "Comprobante de transferencia - CheeseCash",
+      `<p>Transferiste ${amount} ${currency} a ${toUser.full_name}.</p>`
+    );
+  } catch (emailError) {
+    logger.error("No se pudo enviar el comprobante de la transferencia:", emailError);
+  }
+}
+
+return transfer;
 }
 
 export async function confirmTransfer(token: string) {
