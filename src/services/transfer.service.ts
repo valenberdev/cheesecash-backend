@@ -1,4 +1,5 @@
 import { pool } from "../config/db";
+import { logger } from "../utils/logger";
 import { findUserByEmail, findUserById } from "../repositories/user.repository";
 import {
   findWalletByUserId,
@@ -104,12 +105,19 @@ export async function executeTransfer(
     const confirmLink = `${process.env.FRONTEND_URL}/confirm-transfer?token=${confirmationToken}`;
 
     if (fromUser) {
-      await sendEmail(
-        fromUser.email,
-        "Confirmá tu transferencia - CheeseCash",
-        `<p>Transferencia de ${amount} ${currency} pendiente de confirmación.</p>
-     <p><a href="${confirmLink}">Confirmar</a></p>`,
-      );
+      try {
+        await sendEmail(
+          fromUser.email,
+          "Confirmá tu transferencia - CheeseCash",
+          `<p>Transferencia de ${amount} ${currency} pendiente de confirmación.</p>
+   <p><a href="${confirmLink}">Confirmar</a></p>`,
+        );
+      } catch (emailError) {
+        logger.error(
+          "No se pudo enviar el mail de confirmacion de monto alto (transferencia):",
+          emailError,
+        );
+      }
     }
 
     return pendingTransfer;
@@ -222,6 +230,27 @@ export async function confirmTransfer(token: string) {
     throw error;
   } finally {
     client.release();
+  }
+
+  const wallet = await findWalletById(transfer.from_wallet_id);
+
+  if (wallet) {
+    const user = await findUserById(wallet.user_id);
+
+    if (user) {
+      try {
+        await sendEmail(
+          user.email,
+          "Transferencia confirmada - CheeseCash",
+          `<p>Tu transferencia de ${transfer.amount} ${transfer.currency} fue confirmada y ya se acreditó.</p>`,
+        );
+      } catch (emailError) {
+        logger.error(
+          "No se pudo enviar el comprobante de la transferencia:",
+          emailError,
+        );
+      }
+    }
   }
 
   return {

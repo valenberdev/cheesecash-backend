@@ -74,6 +74,7 @@ export async function isHighValueTransaction(
 
   return fromExceeds || toExceeds;
 }
+
 export async function executeTransaction(
   userId: number,
   type: string,
@@ -141,13 +142,20 @@ export async function executeTransaction(
     if (userForEmail) {
       const confirmLink = `${process.env.FRONTEND_URL}/confirm-transaction?token=${confirmationToken}`;
 
-      await sendEmail(
-        userForEmail.email,
-        "Confirmá tu operación - CheeseCash",
-        `<p>Tu operación de ${fromAmount} ${fromCurrency} a ${toCurrency} supera el monto habitual y necesita confirmación.</p>
-         <p>El link vence en 2 horas.</p>
-         <p><a href="${confirmLink}">Confirmar operación</a></p>`,
-      );
+      try {
+        await sendEmail(
+          userForEmail.email,
+          "Confirmá tu operación - CheeseCash",
+          `<p>Tu operación de ${fromAmount} ${fromCurrency} a ${toCurrency} supera el monto habitual y necesita confirmación.</p>
+       <p>El link vence en 2 horas.</p>
+       <p><a href="${confirmLink}">Confirmar operación</a></p>`,
+        );
+      } catch (emailError) {
+        logger.error(
+          "No se pudo enviar el mail de confirmacion de monto alto:",
+          emailError,
+        );
+      }
     }
 
     return pendingTransaction;
